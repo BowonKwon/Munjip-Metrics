@@ -48,7 +48,7 @@ def itertext_split(elem):
         (note if here else main).append(e.text or "")
         for c in e:
             walk(c, here)
-            (note if in_note else main).append(c.tail or "")  # tail belongs to the parent's context
+            (note if here else main).append(c.tail or "")  # tail belongs to the parent's (e) context, so text after <line/> inside a note stays in the note
     walk(elem, False)
     return "".join(main), "".join(note)
 
@@ -71,7 +71,7 @@ def parse_level1(root):
                   "ho": "|".join(plain(x).strip() for x in au.findall("자호[@type='호']")),
                   "si": "|".join(plain(x).strip() for x in au.findall("자호[@type='시호']")),
                   # 서기년="0" and "9999" are the ITKC's placeholders for an unknown year → blank
-                  "birth": ((au.find("생년").get("서기년") if au.find("생년") is not None else "") or "").replace("0", "", 1) if (au.find("생년") is not None and au.find("생년").get("서기년") == "0") else ((au.find("생년").get("서기년") if au.find("생년") is not None else "") or ""),
+                  "birth": "" if (au.find("생년") is not None and au.find("생년").get("서기년") in ("0", "9999")) else ((au.find("생년").get("서기년") if au.find("생년") is not None else "") or ""),
                   "death": "" if (au.find("몰년") is not None and au.find("몰년").get("서기년") in ("0", "9999")) else ((au.find("몰년").get("서기년") if au.find("몰년") is not None else "") or ""),
                   "birth_text": plain(au.find("생년")).strip(), "death_text": plain(au.find("몰년")).strip()}
     jip = meta.find("간행정보/집수")
@@ -156,7 +156,7 @@ def parse_letter(title):
     t = re.sub(r"[。．\s]+$", "", title)
     t = re.sub(r"\s+[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥].*$", "", t)  # trailing 干支 date
     m = LETTER_VERB.match(t)
-    if not m:
+    if not m or t.startswith("擬"):   # 擬作 (imagined letters between historical figures) have no addressee
         return "", 0
     rest = t[m.end():]
     rest = re.split(r"(書|簡|問目|別紙|狀|札|啓|帖|疏|牘|函|序|詩)", rest, maxsplit=1)[0]

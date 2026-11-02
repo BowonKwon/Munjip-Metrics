@@ -37,7 +37,8 @@ def norm(s):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--coding", default="data/coding"); ap.add_argument("--derived", default="data/derived"); x = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--coding", default="data/coding"); ap.add_argument("--derived", default="data/derived")
+    ap.add_argument("--munkwa", default="data/raw/aks/aks-2020-joseon-munkwa-geupjeja.xml"); x = ap.parse_args()
     C = Path(x.coding); D = Path(x.derived); out = {}
     if (C / "genre_coded.csv").exists():
         g = pd.read_csv(C / "genre_coded.csv", dtype=str); v = g.fits.str.strip().str.lower()
@@ -58,6 +59,33 @@ def main():
         unclear = int((says == "unclear").sum())
         miss = int((U.haeje_says_pass.str.strip().str.lower() == "yes").sum())
         out["munkwa"] = rec(int(agree), len(L) - unclear, dict(unclear=unclear, recall=(1 - miss / len(U)) if len(U) else None, recall_n=int(len(U)), missed=miss))
+    if (C / "genre_recode_coded.csv").exists() and (C / "genre_coded.csv").exists():
+        a = pd.read_csv(C / "genre_coded.csv", dtype=str).set_index("work_id"); b = pd.read_csv(C / "genre_recode_coded.csv", dtype=str).set_index("work_id")
+        same = int(sum(a.loc[i, "fits"].strip().lower() == b.loc[i, "fits"].strip().lower() for i in b.index))
+        out["genre_recode"] = dict(n=int(len(b)), same=same, agreement=same / len(b))
+    # D2 stand-in: courtesy/pen-name agreement between the ITKC bibliographic record and the roster row linked (see codebook §4 note)
+    if (D / "d_authors.csv").exists() and x.munkwa and Path(x.munkwa).exists():
+        import re, xml.etree.ElementTree as ET
+        hj = lambda s: (re.search(r"\(([^)]+)\)", s or "") or [None, ""])[1].strip() if re.search(r"\(([^)]+)\)", s or "") else ""
+        mk = {}
+        for e in ET.parse(x.munkwa).getroot().iter("급제자"):
+            if e.find("ID") is not None:
+                mk[(e.findtext("ID") or "").strip()] = (hj(e.findtext("자")), hj(e.findtext("호")))
+        A = pd.read_csv(D / "d_authors.csv", dtype=str); L = A[A.linked == "1"]
+        agree = dis = 0
+        for _, r in L.iterrows():
+            ja = set(filter(None, str(r.author_ja if pd.notna(r.author_ja) else "").split("|"))); ho = set(filter(None, str(r.author_ho if pd.notna(r.author_ho) else "").split("|")))
+            mja, mho = mk.get(r.munkwa_id, ("", ""))
+            if (ja and mja) or (ho and mho):
+                if (mja and mja in ja) or (mho and mho in ho):
+                    agree += 1
+                else:
+                    dis += 1
+        out["munkwa_jaho"] = dict(n=agree + dis, agree=agree, rate=(agree / (agree + dis) if agree + dis else None))
+    if (D / "works.csv").exists():
+        w = pd.read_csv(D / "works.csv", dtype=str, usecols=["collection_id", "genre2"])
+        n_blk = int(((w.collection_id == "ITKC_MO_0126A") & (w.genre2 == "冊文類")).sum())
+        out["genre_block_note"] = dict(collection_id="ITKC_MO_0126A", title_ko="호음잡고", n_works=n_blk)
     (D / "reliability.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(out, ensure_ascii=False, indent=1))
 

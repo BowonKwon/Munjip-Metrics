@@ -140,7 +140,8 @@ def headline(m, D: Data, lang):
         r = tot.n_collections.idxmax()
         return f"{int(tot.n_collections.max()):,}", (f"{century_label(r, lang)} 출생 저자의 문집 — 최다" if ko else f"collections by authors born in the {century_label(r, lang)} — the most")
     if mid == "a4_chars_per_work":
-        return f"{D.tot.chars_per_work_median.median():,.0f}", ("세기 중앙값들의 중앙값(자/편)" if ko else "median of century medians (characters per work)")
+        t9 = D.tot[D.tot.index.notna()]
+        return f"{t9.chars_per_work_median.median():,.0f}", (f"세기별 중앙값 {len(t9)}개의 중앙값, 자/편" if ko else f"median of the {len(t9)} century medians, characters per work")
     if mid == "a5_note_share":
         return f"{D.col.chars_note.sum()/D.col.chars.sum():.1%}", ("전체 글자 중 주" if ko else "of all characters are in notes")
     if mid == "a6_own_share":
@@ -163,7 +164,7 @@ def headline(m, D: Data, lang):
         g2 = D.b2; v = g2[(g2.genre1 == "哀祭類") | (g2.genre2.isin(["碑誌類", "行狀類"]))].n_works.sum() / g2.n_works.sum()
         return f"{v:.1%}", ("본인 편 중 애제·비지·행장" if ko else "of own works commemorate others")
     if mid == "b7_other_share":
-        return f"{D.other.other_share.mean():.1%}", ("세기 평균 기타류 비율" if ko else "mean residual share across centuries")
+        return f"{(D.other.n * D.other.other_share).sum() / D.other.n.sum():.1%}", ("본인 편 전체 중 기타류" if ko else "of own works are in an 'other' class")
     if mid == "b8_poem_length":
         return f"{D.poems.poem_chars_median.median():,.0f}", ("시 한 편 글자 수, 세기 중앙값들의 중앙값" if ko else "characters per poem, median of century medians")
     if mid == "c1_recipients":
@@ -174,7 +175,7 @@ def headline(m, D: Data, lang):
         return f"{int(D.writers.n_other_writers.sum()):,}", ("문집에 글을 보탠 타인 필자(문집별 합)" if ko else "other writers contributing (summed over collections)")
     dc = D.dcen
     if mid == "d1_dates":
-        return f"{D.authors.death.notna().mean():.1%}", ("저자 중 몰년 있음" if ko else "of authors have a death year")
+        return f"{(D.authors.birth.notna() & D.authors.death.notna()).mean():.1%}", ("저자 중 생년·몰년 모두 있음" if ko else "of authors have both birth and death years")
     if mid == "d2_munkwa":
         return f"{D.authors.linked.mean():.1%}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the examination roster")
     if mid == "d3_pub_lag":
@@ -488,7 +489,7 @@ def home(D, lang):
     stats = [(f"{len(D.col):,}", ("문집" if ko else "collections"), "collections/index.html"),
              (f"{int(D.col.n_works.sum()):,}", ("편" if ko else "works"), "metrics/a1_works.html"),
              (f"{D.col.chars.sum()/1e6:.0f}M", ("한자" if ko else "characters"), "metrics/a2_chars.html"),
-             (f"{poetry:.0%}", ("본인 편 중 시" if ko else "of own works are poetry"), "metrics/b1_poetry_share.html"),
+             (f"{poetry:.0%}", ("저자 본인 편 중 시" if ko else "of authors' own works are poetry"), "metrics/b1_poetry_share.html"),
              (f"{D.authors.linked.mean():.0%}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the exam roster"), "metrics/d2_munkwa.html")]
     scope = ("범위는 공공데이터포털의 한국문집총간 XML 1,251건(정편·속편) 전부다. 번역문·한국고전종합DB 웹 콘텐츠는 쓰지 않았고, 원문 전문은 싣지 않는다 — 편마다 고전종합DB 로 연결한다. 세기는 저자 생년 기준이다."
              if ko else
@@ -532,7 +533,7 @@ def data_page(D, lang, files):
     t = T[lang]; ko = lang == "ko"
     body = [f"<h1>{t['nav_data']}</h1>", '<p class="lead">' + (f"작품 테이블 한 장(works.csv.gz, {len(D.col):,}종 {int(D.col.n_works.sum()):,}행)이 뼈대다. 편마다 ID·문집·권·문체분류·제목·필자·글자 수(본문/주)·연계 유무가 있고 본문은 없다. 모든 지표는 이 표와 저자 표에서 다시 만들 수 있다. datapackage.json 에 파일마다 라이선스와 원자료를 적었다." if ko else
                                                        f"One work table (works.csv.gz, {int(D.col.n_works.sum()):,} rows from {len(D.col):,} collections) is the backbone: id, collection, fascicle, genre class, title, writer, characters (text/notes) and link flags per work, no text. Every metric can be rebuilt from it and the author table. datapackage.json lists the license and sources of each file.") + "</p>",
-            '<div class="files">' + "".join(f'<a href="../data/{f}">{f}</a>' for f in files) + "</div>", '<p class="files"><a href="../data/datapackage.json">datapackage.json</a></p>',
+            '<div class="files">' + "".join(f'<a href="../data/{f}">{f}</a>' for f in files) + "</div>", '<p class="files"><a href="../data/datapackage.json">datapackage.json</a> · <a href="https://github.com/BowonKwon/Munjip-Metrics/tree/main/data/coding">data/coding/</a> (' + ("코드북·표본·판정" if ko else "codebook, samples, judgments") + ")</p>",
             "<h2>" + t["license"] + "</h2><p>" + ("파생 표: 이용허락범위 제한 없는 공공데이터의 2차 저작물이며, 이 사이트의 자체 저작 부분은 CC BY 4.0. 코드: MIT. 원문·분류·제목은 한국고전번역원, 방목·인명은 한국학중앙연구원의 것이다." if ko else
                                                    "Derived tables are derivative works of public data released without license restriction; this site's own contributions are CC BY 4.0, code MIT. Text, classification and titles belong to the ITKC; the roster and person data to the Academy of Korean Studies.") + "</p>"]
     return page(lang, t["nav_data"], "".join(body), depth=1, active="data")
@@ -550,8 +551,8 @@ def method_page(D, lang):
         secs.append("<h2>저자 묶기</h2><p>저자 ID 는 한자성명 + 생년이다. 같은 저자의 여러 문집(본집·속집·유고)은 저자 표에서 합산하고 문집 수를 열로 보인다. 필자가 저자와 다른 편(서문·발문·행장·만사·부록)은 저자 저작량에서 뺀다. 같은 이름·같은 생년의 다른 사람은 구별하지 못한다 — 발견되면 overrides 로 고친다.</p>")
         secs.append("<h2>인물 연결</h2><p>문과방목 연결 규칙은 M1 성명+생년 일치(중시·발영시로 여러 행이면 첫 급제), M2 성명 일치·방목 생년 없음·자 또는 호 일치, M3 성명 일치·후보 하나·시험년이 생애 안. 둘 이상 남으면 미확정(AMB)으로 두고 연결하지 않는다. 연결률은 급제율이 아니다. 한국역대인명정보는 성명+생년(P1) 또는 성명+호(P2)로 연결해 몰년 일치율만 본다.</p>")
         secs.append("<h2>관계 문체</h2><p>서간 수신자는 제목이 答·與·上·寄·復·報·奉·呈·贈·簡·謝 로 시작할 때 그 뒤부터 書·簡·問目·別紙·狀 등 앞까지의 문자열이고, 비지·행장 피장자는 墓誌銘·墓碣銘·神道碑·行狀 등 앞의 문자열(贈·故·先考 등 머리말 제거)이다. 1.0 은 문자열을 사람으로 합치지 않는다 — 자·호·관직으로 달리 불린 같은 사람은 다른 수신자로 센다. 파싱 정밀도는 표본으로 잰다.</p>")
-        secs.append("<h2>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
-        secs.append("<h2>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 원본 zip 1,251건의 SHA-256 은 raw_manifest.json 에 있다.</p>")
+        secs.append("<h2>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>B·C·D 계열의 세기 표에서 생년 없는 저자 8명(본인 편 709)은 「생년 미상」 행에 따로 있고 전체 합계에는 들어간다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
+        secs.append("<h2>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 포털 파일 이력은 1,251항목, 내려받은 첨부는 1,250건(운암집 1건은 첨부 없음), 채택한 문집 zip 은 1,249건(구 스키마 중복 1건 제외)이며 그 SHA-256 이 raw_manifest.json 에 있다.</p>")
         secs.append(f"<h2>판</h2><p>{VERSION} ({BUILD_DATE}) — 첫 공개.</p>")
     else:
         secs.append(f"<h1>Method and limits</h1><h2>Sources</h2><p>{esc(SOURCES['itkc_munjip']['en'])}</p><p>{esc(SOURCES['aks_munkwa']['en'])} {esc(SOURCES['aks_persons']['en'])}</p>")
@@ -561,8 +562,8 @@ def method_page(D, lang):
         secs.append("<h2>Merging authors</h2><p>The author id is the Chinese-character name plus the birth year. Several collections by one author (main collection, continuation, posthumous works) are summed in the author table with the number of collections shown. Works whose writer differs from the author (prefaces, postscripts, biographies, elegies, appendices) are excluded from the author's output. Two different people sharing a name and birth year cannot be told apart; such cases are corrected through overrides when found.</p>")
         secs.append("<h2>Person linkage</h2><p>Examination-roster rules: M1 same name and birth year (first pass when a person is listed for re-examinations), M2 same name, roster birth absent, courtesy or pen name identical, M3 same name, a single candidate, examination year within the lifetime. Where more than one candidate survives the author stays unlinked (AMB). Linkage is not a pass rate. The AKS person database is matched by name and birth year (P1) or name and pen name (P2) and used only to check death years.</p>")
         secs.append("<h2>Relationship genres</h2><p>A letter's addressee is the string after an opening 答·與·上·寄·復·報·奉·呈·贈·簡·謝 up to 書·簡·問目·別紙·狀 etc.; an epitaph's subject is the string before 墓誌銘·墓碣銘·神道碑·行狀 etc. with honorific prefixes removed. Version 1.0 does not merge strings into persons: the same person named by courtesy name, pen name or office counts as different addressees. Parsing precision is measured on a sample.</p>")
-        secs.append("<h2>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
-        secs.append("<h2>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). SHA-256 digests of the 1,251 source archives are in raw_manifest.json.</p>")
+        secs.append("<h2>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>In the century tables of series B–D the 8 authors without a birth year (709 own works) sit in a separate 'birth year unknown' row and are included in the overall totals.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
+        secs.append("<h2>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). The portal lists 1,251 entries; 1,250 attachments were downloaded (one entry has none) and 1,249 archives adopted (one old-schema duplicate excluded); their SHA-256 digests are in raw_manifest.json.</p>")
         secs.append(f"<h2>Versions</h2><p>{VERSION} ({BUILD_DATE}) — first release.</p>")
     return page(lang, t["nav_method"], "".join(secs), depth=1, active="method")
 

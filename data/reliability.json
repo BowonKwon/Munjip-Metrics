@@ -36,19 +36,19 @@
   "recall_n": 100,
   "missed": 0
  },
+ "genre_recode": {
+  "n": 30,
+  "same": 29,
+  "agreement": 0.9666666666666667
+ },
  "munkwa_jaho": {
-  "n": 178,
-  "agree": 166,
-  "rate": 0.9325842696629213
+  "n": 179,
+  "agree": 167,
+  "rate": 0.9329608938547486
  },
  "genre_block_note": {
   "collection_id": "ITKC_MO_0126A",
   "title_ko": "호음잡고",
   "n_works": 284
- },
- "genre_recode": {
-  "n": 30,
-  "same": 29,
-  "agreement": 0.9666666666666667
  }
 }

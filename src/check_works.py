@@ -28,7 +28,17 @@ def read_xml(zf, name):
     return b.decode("utf-8-sig")
 
 
+def selftest_split():
+    """Minimal case from the Codex review: <내용>甲<원주>乙<line/>丙</원주>丁</내용> must give main 2, note 2."""
+    import xml.etree.ElementTree as ET
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from build_works import itertext_split
+    m, n = itertext_split(ET.fromstring("<내용>甲<원주>乙<line/>丙</원주>丁</내용>"))
+    assert (len(HAN.findall(m)), len(HAN.findall(n))) == (2, 2), (m, n)
+
+
 def main():
+    selftest_split()
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", action="append", required=True); ap.add_argument("--derived", default="data/derived")
     x = ap.parse_args()

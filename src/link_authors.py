@@ -13,7 +13,7 @@ Pre-registered linkage rules (applied in order; the first that fires is recorded
 Persons: P1 same 한자성명 and same 생년; P2 same 한자성명, 호 identical; else none. Birth/death agreement is reported.
 author_id = 한자성명 + '_' + 생년 (birth missing: '_x'). Collections of the same author_id are merged; n_collections kept.
 """
-import argparse, csv, re, sys
+import argparse, csv, re, sys, unicodedata
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 from pathlib import Path
@@ -21,9 +21,16 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 
 
+VARIANTS = str.maketrans({"煕": "熙"})   # ITKC 煕 vs AKS 熙 (楊煕止/楊熙止); extend only with confirmed pairs
+
+
+def norm_name(s):
+    return unicodedata.normalize("NFKC", (s or "").strip()).translate(VARIANTS)
+
+
 def hanja(s):
     m = re.search(r"\(([^)]+)\)", s or "")
-    return m.group(1).strip() if m else ""
+    return norm_name(m.group(1)) if m else ""
 
 
 def load_munkwa(p):
@@ -72,7 +79,8 @@ def main():
             a["pub_years"].append(c["pub_year"])
     stats = defaultdict(int)
     for a in authors.values():
-        nm, by, dy = a["author_hj"], a["birth"], a["death"]
+        nm, by, dy = norm_name(a["author_hj"]), a["birth"], a["death"]
+        rule_note = None
         ja = set(filter(None, a["author_ja"].split("|"))); ho = set(filter(None, a["author_ho"].split("|")))
         cands = mk_idx.get(nm, [])
         rule, hit = "none", None
@@ -82,7 +90,7 @@ def main():
             m1 = sorted(m1, key=lambda r: int(r["yr"]) if r["yr"].isdigit() else 9999)[:1]
             rule_note = "M1-first"
         if len(m1) == 1:
-            rule, hit = (locals().get("rule_note") or "M1"), m1[0]
+            rule, hit = (rule_note or "M1"), m1[0]
         elif len(m1) > 1:
             rule = "AMB"
         else:

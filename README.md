@@ -8,9 +8,9 @@ Korean literary collections (Hanguk munjip chonggan) counted work by work, with 
 
 ## 무엇인가 · What this is
 
-한국고전번역원이 공공데이터포털에 개방한 「한국문집총간」 XML(1,251건, 이용허락범위 제한 없음)을 전부 받아 편(詩 한 수·편지 한 통·묘지명 한 편) 단위 표로 만들고, 규모·문체 구성·관계 문체·저자와 간행의 네 계열 23개 지표를 센다. 원문 전문은 싣지 않고 편마다 고전종합DB 로 연결한다. 번역문·웹 콘텐츠는 쓰지 않았다.
+한국고전번역원이 공공데이터포털에 개방한 「한국문집총간」 XML(목록 1,251항목 중 첨부 있는 1,250건을 받고 구 스키마 중복 1건을 뺀 1,249종, 이용허락범위 제한 없음)을 편(詩 한 수·편지 한 통·묘지명 한 편) 단위 표로 만들고, 규모·문체 구성·관계 문체·저자와 간행의 네 계열 23개 지표를 센다. 원문 전문은 싣지 않고 편마다 고전종합DB 로 연결한다. 번역문·웹 콘텐츠는 쓰지 않았다.
 
-All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute for the Translation of Korean Classics on data.go.kr (no license restriction) were downloaded and turned into a work-level table (one poem, one letter, one epitaph = one row). Twenty-three metrics in four series — size, genre composition, relationship genres, authors and publication — are counted from it. No full text is reproduced; every work links to the ITKC database.
+All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute for the Translation of Korean Classics on data.go.kr (no license restriction) were listed; 1,250 attachments were downloaded (one entry has none), 1,249 archives adopted (one old-schema duplicate excluded) and turned into a work-level table (one poem, one letter, one epitaph = one row). Twenty-three metrics in four series — size, genre composition, relationship genres, authors and publication — are counted from it. No full text is reproduced; every work links to the ITKC database.
 
 | | |
 |---|---|

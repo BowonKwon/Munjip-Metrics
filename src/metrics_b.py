@@ -24,8 +24,8 @@ def century(y):
 
 
 def comp(df, keys):
-    g = df.groupby(keys + ["genre1"]).agg(n_works=("work_id", "size"), chars=("chars", "sum")).reset_index()
-    tot = g.groupby(keys).agg(total_works=("n_works", "sum"), total_chars=("chars", "sum"))
+    g = df.groupby(keys + ["genre1"], dropna=False).agg(n_works=("work_id", "size"), chars=("chars", "sum")).reset_index()
+    tot = g.groupby(keys, dropna=False).agg(total_works=("n_works", "sum"), total_chars=("chars", "sum"))
     g = g.join(tot, on=keys)
     g["share_works"] = g.n_works / g.total_works; g["share_chars"] = g.chars / g.total_chars
     return g
@@ -43,7 +43,7 @@ def main():
     comp(own, ["century"]).to_csv(D / "b_centuries.csv", index=False, encoding="utf-8")
     comp(W, ["century"]).to_csv(D / "b_centuries_all.csv", index=False, encoding="utf-8")
     comp(own, ["century", "series"]).to_csv(D / "b_centuries_series.csv", index=False, encoding="utf-8")
-    g2 = own.groupby(["century", "genre1", "genre2"]).agg(n_works=("work_id", "size"), chars=("chars", "sum")).reset_index()
+    g2 = own.groupby(["century", "genre1", "genre2"], dropna=False).agg(n_works=("work_id", "size"), chars=("chars", "sum")).reset_index()
     g2.to_csv(D / "b_genre2.csv", index=False, encoding="utf-8")
     # per collection
     pc = comp(own, ["collection_id"])
@@ -56,10 +56,10 @@ def main():
     B = C[["title_ko", "author_ko", "birth", "series"]].join(other).join(wide).join(widec).join(poems)
     B["century"] = B.birth.map(century)
     B.to_csv(D / "b_collections.csv", encoding="utf-8")
-    po = own[own.genre1 == "詩類"].groupby("century").agg(n_poems=("work_id", "size"), poem_chars_median=("chars_main", "median"), poem_chars_mean=("chars_main", "mean"),
+    po = own[own.genre1 == "詩類"].groupby("century", dropna=False).agg(n_poems=("work_id", "size"), poem_chars_median=("chars_main", "median"), poem_chars_mean=("chars_main", "mean"),
                                                         poem_chars_p25=("chars_main", lambda s: s.quantile(.25)), poem_chars_p75=("chars_main", lambda s: s.quantile(.75)))
     po.to_csv(D / "b_poems.csv", encoding="utf-8")
-    other_c = own.assign(is_other=(own.genre2.str.contains("其他", na=False)).astype(int)).groupby("century").agg(n=("work_id", "size"), other_share=("is_other", "mean"))
+    other_c = own.assign(is_other=(own.genre2.str.contains("其他", na=False)).astype(int)).groupby("century", dropna=False).agg(n=("work_id", "size"), other_share=("is_other", "mean"))
     other_c.to_csv(D / "b_other_share.csv", encoding="utf-8")
     cen = comp(own, ["century"])
     print(cen[cen.genre1 == "詩類"][["century", "n_works", "total_works", "share_works", "share_chars"]].to_string(index=False))
