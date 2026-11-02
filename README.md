@@ -15,7 +15,7 @@ All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute f
 | | |
 |---|---|
 | 문집 · collections | 1,249 (정편 663 · 속편 586) |
-| 편 · works | 637,203 (저자 본인 609,494) |
+| 편 · works | 637,203 (저자 저자 글 609,494) |
 | 글자 · characters | 182,868,728 (본문 177,365,899 · 주 5,502,829) |
 | 저자 · authors | 1,248 (문과방목 연결 613) |
 | 지표 · metrics | 23 (A 7 · B 8 · C 3 · D 5) |
