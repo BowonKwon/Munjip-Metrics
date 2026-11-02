@@ -36,6 +36,15 @@ def norm(s):
     return "" if pd.isna(s) else str(s).strip().replace(" ", "")
 
 
+def year(s):
+    """"1546", "1546.0", 1546 -> "1546"; blank stays blank."""
+    s = norm(s)
+    try:
+        return str(int(float(s))) if s else ""
+    except ValueError:
+        return s
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--coding", default="data/coding"); ap.add_argument("--derived", default="data/derived")
     ap.add_argument("--munkwa", default="data/raw/aks/aks-2020-joseon-munkwa-geupjeja.xml"); x = ap.parse_args()
@@ -55,10 +64,11 @@ def main():
         c = pd.read_csv(C / "munkwa_coded.csv", dtype=str); k = pd.read_csv(C / "munkwa_key.csv", dtype=str); m = c.merge(k, on="author_id")
         L = m[m.group == "linked"]; U = m[m.group == "unlinked"]
         says = L.haeje_says_pass.str.strip().str.lower()
-        agree = ((says == "yes") & ((L.haeje_exam_year.map(norm) == "") | (L.haeje_exam_year.map(norm) == L.exam_year.map(norm)))).sum()
+        agree = ((says == "yes") & ((L.haeje_exam_year.map(year) == "") | (L.haeje_exam_year.map(year) == L.exam_year.map(year)))).sum()
         unclear = int((says == "unclear").sum())
         miss = int((U.haeje_says_pass.str.strip().str.lower() == "yes").sum())
-        out["munkwa"] = rec(int(agree), len(L) - unclear, dict(unclear=unclear, recall=(1 - miss / len(U)) if len(U) else None, recall_n=int(len(U)), missed=miss))
+        out["munkwa"] = rec(int(agree), len(L) - unclear, dict(unclear=unclear, recall=(1 - miss / len(U)) if len(U) else None, recall_n=int(len(U)), missed=miss,
+                                                           meaning="share of linked authors whose short introduction explicitly states a 문과 pass (and year, if given) — NOT linkage precision; the introductions rarely mention examinations"))
     if (C / "genre_recode_coded.csv").exists() and (C / "genre_coded.csv").exists():
         a = pd.read_csv(C / "genre_coded.csv", dtype=str).set_index("work_id"); b = pd.read_csv(C / "genre_recode_coded.csv", dtype=str).set_index("work_id")
         same = int(sum(a.loc[i, "fits"].strip().lower() == b.loc[i, "fits"].strip().lower() for i in b.index))

@@ -27,14 +27,15 @@
  },
  "munkwa": {
   "n": 199,
-  "yes": 0,
-  "precision": 0.0,
-  "ci_lo": 0.0,
-  "ci_hi": 0.018938915883132453,
+  "yes": 1,
+  "precision": 0.005025125628140704,
+  "ci_lo": 0.0008875866694877336,
+  "ci_hi": 0.02791123960677907,
   "unclear": 1,
   "recall": 1.0,
   "recall_n": 100,
-  "missed": 0
+  "missed": 0,
+  "meaning": "share of linked authors whose short introduction explicitly states a 문과 pass (and year, if given) — NOT linkage precision; the introductions rarely mention examinations"
  },
  "genre_recode": {
   "n": 30,

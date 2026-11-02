@@ -16,11 +16,11 @@ All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute f
 |---|---|
 | 문집 · collections | 1,249 (정편 663 · 속편 586) |
 | 편 · works | 637,203 (저자 본인 609,494) |
-| 글자 · characters | 182,868,728 (본문 180,303,315 · 주 2,565,413) |
-| 저자 · authors | 1,248 (문과방목 연결 610) |
+| 글자 · characters | 182,868,728 (본문 177,365,899 · 주 5,502,829) |
+| 저자 · authors | 1,248 (문과방목 연결 613) |
 | 지표 · metrics | 23 (A 7 · B 8 · C 3 · D 5) |
 
-포털 1,251건 중 1건(운암집, 2021 등록)은 첨부 파일이 없고(`atachFileYn: N`), 1건(망헌유고 1571년, 2017 등록)은 2003년 구 스키마로 같은 문집의 신 스키마 판이 따로 있어 제외했다. Of the 1,251 entries, one (Unam jip, 2021) has no attachment on the portal and one (Manghŏn yugo 1571, 2017) is an old-schema duplicate of a collection present in the new schema; both are excluded.
+포털 목록 1,251항목 중 1건(운암집, 2021 등록)은 내려받기 요청에 첨부 ID 가 돌아오지 않았고(포털 응답 `atachFileYn: N`, 원응답은 작업 기록에 보존), 1건(망헌유고 1571년, 2017 등록)은 2003년 구 스키마(UTF-16)로 된 같은 문집의 다른 판본이라(신 스키마 판과 85편 중 84편 본문 일치) 제외했다. Of the 1,251 portal entries, one (Unam jip, 2021) returned no attachment id (portal response `atachFileYn: N`, kept in the working records) and one (Manghŏn yugo 1571, 2017) is an old-schema (UTF-16) edition of a collection also present in the new schema (84 of 85 works identical); both are excluded.
 
 ## 신뢰도 카드 · Reliability cards
 

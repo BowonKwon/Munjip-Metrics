@@ -16,7 +16,7 @@ Fields
 """
 
 SITE = {
-    "ko": {"title": "문집 메트릭스", "subtitle": "한국문집총간 1,251종을 편 단위로 센 수치와, 그 수치를 얼마나 믿어도 되는지"},
+    "ko": {"title": "문집 메트릭스", "subtitle": "한국문집총간 1,249종을 편 단위로 센 수치와, 그 수치를 얼마나 믿어도 되는지"},
     "en": {"title": "Munjip Metrics", "subtitle": "Korean literary collections (Hanguk munjip chonggan) counted work by work, with a reliability card on every number"},
     "version": "1.0",
 }
@@ -41,8 +41,8 @@ SERIES_INTRO = {
 
 SOURCES = {
     "itkc_munjip": {
-        "ko": "한국고전번역원, 「한국고전번역원_한국문집총간_20240830」(공공데이터포털 3074298, 이용허락범위 제한 없음). 파일 이력 1,251건의 XML zip — 문집마다 서지 1파일(저자·집수·간행년·목차·간략해제)과 권차 파일들(편 단위 제목·필자·문체분류·본문). 편(type=\"최종정보\") 단위로 셌다.",
-        "en": "Institute for the Translation of Korean Classics, 'Hanguk munjip chonggan' (data.go.kr dataset 3074298, no license restriction): 1,251 XML archives, one per collection — a bibliographic file (author, series volume, publication year, table of contents, short introduction) plus one file per fascicle with every work's title, writer, genre class and text. Counted at the work level (type=\"최종정보\").",
+        "ko": "한국고전번역원, 「한국고전번역원_한국문집총간_20240830」(공공데이터포털 3074298, 이용허락범위 제한 없음). 파일 이력 1,251항목 중 채택한 1,249건의 XML zip(첨부 없는 1건·구 스키마 판본 1건 제외) — 문집마다 서지 1파일(저자·집수·간행년·목차·간략해제)과 권차 파일들(편 단위 제목·필자·문체분류·본문). 편(type=\"최종정보\") 단위로 셌다.",
+        "en": "Institute for the Translation of Korean Classics, 'Hanguk munjip chonggan' (data.go.kr dataset 3074298, no license restriction): 1,249 XML archives adopted from the 1,251 portal entries (one without an attachment and one old-schema edition excluded), one per collection — a bibliographic file (author, series volume, publication year, table of contents, short introduction) plus one file per fascicle with every work's title, writer, genre class and text. Counted at the work level (type=\"최종정보\").",
         "license": "No restriction (data.go.kr)", "url": "https://www.data.go.kr/data/3074298/fileData.do",
     },
     "aks_munkwa": {
@@ -138,8 +138,8 @@ METRICS = [
          ko=dict(name="서간 비중", definition="본인 편 중 書簡類의 비율, 세기별.", formula="書簡類 편 / 본인 편", reading="", caveat="문집에 실린 편지만이다 — 문집 편찬 때 고른 결과이지 쓴 편지 전부가 아니다."),
          en=dict(name="Share of letters", definition="Share of own works that are letters (書簡類), by century.", formula="Letter works / own works", reading="", caveat="Only letters selected for the printed collection, not all letters written.")),
     dict(id="b4_memorials_share", series="B", table="b_centuries", unit="share", fmt=".1%", reliability="exact",
-         ko=dict(name="공거류(소·차·계) 비중", definition="본인 편 중 公車類(疏箚·對策·敎書 등 조정에 올리거나 조정에서 내린 글)의 비율, 세기별.", formula="公車類 편 / 본인 편", reading="", caveat="관직에 있던 저자에게만 생기는 문체다. 저자의 관력과 함께 읽는다."),
-         en=dict(name="Share of court documents", definition="Share of own works in the court-document class (公車類: memorials, examination answers, royal edicts), by century.", formula="Court-document works / own works", reading="", caveat="A genre only office-holders produce; read with the author's career.")),
+         ko=dict(name="공거류(소·차·계) 비중", definition="본인 편 중 公車類(疏箚·對策·敎書 등 조정에 올리거나 조정에서 내린 글)의 비율, 세기별.", formula="公車類 편 / 본인 편", reading="", caveat="조정에 올리거나 조정에서 내린 글과 과거 답안(對策)이므로 관직·과거와 관련된 문체다. 저자의 관력은 이 사이트가 검증하지 않았다."),
+         en=dict(name="Share of court documents", definition="Share of own works in the court-document class (公車類: memorials, examination answers, royal edicts), by century.", formula="Court-document works / own works", reading="", caveat="Documents submitted to or issued by the court, plus examination answers (對策), so the genre is tied to office and examinations; the authors' careers were not verified on this site.")),
     dict(id="b5_relational_share", series="B", table="b_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="애제·비지·행장 비중", definition="본인 편 중 哀祭類(제문·애사·뇌)와 傳記類 중 碑誌·行狀의 비율 — 남을 기리는 글.", formula="(哀祭類 + 碑誌類 + 行狀類) 편 / 본인 편", reading="", caveat="傳記類의 系譜·其他는 넣지 않는다."),
          en=dict(name="Share of elegies, epitaphs and biographies", definition="Share of own works that commemorate others: elegies (哀祭類) plus epitaphs and biographies within the biography class.", formula="(哀祭類 + 碑誌類 + 行狀類) works / own works", reading="", caveat="Genealogies and 'other' within the biography class are excluded.")),
@@ -187,7 +187,7 @@ METRICS = [
     dict(id="d4_translation", series="D", table="d_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="번역문 연계 진도", definition="편 가운데 고전종합DB 안에서 번역문이 연계된 편의 비율, 그리고 연계된 편이 하나도 없는 문집의 수. 번역 사업의 현황이 아니라 DB 연계의 현황이다.", formula="연계항목 type=\"번역문\" 있는 편 / 편; 문집 단위 0건 수", reading="", caveat="2024-08 자 XML 의 태그 기준이다. 연계가 하나도 없는 정편 문집 520종은 최채기(2020)가 센 미번역 291종보다 훨씬 많다 — 번역서가 있어도 DB 에 연계되지 않은 문집이 있다는 뜻이므로, 이 수치를 「미번역」으로 읽지 않는다."),
          en=dict(name="Linked-translation progress", definition="Share of works with a translation linked inside the ITKC database, and the number of collections with no linked work at all. This measures database linkage, not the translation program.", formula="Works with a 번역문 link / works; collections with zero", reading="", caveat="Tags of the 2024-08 XML. The 520 first-series collections without any link far exceed the 291 that Choi (2020) counted as untranslated, so some translated collections are simply not linked; do not read this metric as 'untranslated'."),
-         external=dict(ko="최채기(2020): 정편 663종 중 미번역 291종(즉 번역 372종). 이 사이트의 정편 중 연계 1편 이상 문집은 143종 — 두 수의 차이는 DB 연계 작업의 범위를 보여 준다.", en="Choi (2020): 291 of the 663 first-series collections untranslated (372 translated). On this site only 143 first-series collections carry at least one link; the gap shows how far database linkage lags behind translation.")),
+         external=dict(ko="최채기(2020): 정편 663종 중 미번역 291종(즉 번역 372종). 이 사이트의 정편 중 연계 1편 이상 문집은 143종 — 두 수의 차이는 DB 연계 작업의 범위를 보여 준다.", en="Choi (2020): 291 of the 663 first-series collections untranslated (372 translated). On this site only 143 first-series collections carry at least one link; the two figures measure different things (links inside the database vs. translations published) and the gap is not a measure of delay.")),
     dict(id="d5_punct", series="D", table="d_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="교감표점 진도", definition="편 가운데 교감표점본이 연계된 편의 비율, 세기별.", formula="연계항목 type=\"교감표점\" 있는 편 / 편", reading="", caveat="교감표점 사업은 정편의 일부에서 진행됐다. 2024-08 자 XML 기준."),
          en=dict(name="Collation and punctuation progress", definition="Share of works with a linked collated and punctuated edition, by century.", formula="Works with a 교감표점 link / works", reading="", caveat="The collation program covers part of the first series. As of the 2024-08 XML.")),
