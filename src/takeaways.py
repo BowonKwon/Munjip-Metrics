@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Key-point sentences per metric (ko/en), the five home-page points and the person-page points.
-Numbers are read from data/derived (1.0, 2026-11-03, after the Codex round-1 corrections); they are re-checked in the
-claim table before each release. Counts and shares only — no interpretation of causes.
+Numbers are read from data/derived (1.0, 2026-11-03) and checked against it before each release.
+Counts and shares only — no interpretation of causes.
 """
 
 TAKE = {
@@ -12,11 +12,11 @@ TAKE = {
     "a3_centuries": {"ko": "저자 생년으로 보면 16세기(382종)·17세기(353종)·18세기(272종)에 문집이 몰려 있고, 14세기까지의 출생 저자는 48종, 19세기는 82종이다. 속편 586종 가운데 48종이 19세기 출생 저자의 문집이다. 생년이 없는 저자 8명의 문집은 세기 표에서 「생년 미상」 행에 있다.",
                      "en": "By the author's birth century the collections cluster in the 16th (382), 17th (353) and 18th (272); authors born up to the 14th century account for 48 collections and the 19th century for 82. Of the 586 supplement collections, 48 are by authors born in the 19th century. The 8 authors without a birth year sit in a separate row of the century tables."},
     "a4_chars_per_work": {"ko": "편당 글자 수의 중앙값은 13~16세기 56자(칠언율시 한 수), 17세기 75자, 18세기 118자, 19세기 157자다. 9세기(최치원) 168자와 12세기 80자는 예외다. 시 비중이 줄고 산문이 느는 것과 같은 방향이다.",
-                          "en": "The median work has 56 characters (one seven-syllable regulated verse) in the 13th–16th centuries, then 75 in the 17th, 118 in the 18th and 157 in the 19th; the 9th century (Choe Chi-won, 168) and the 12th (80) are exceptions. The direction is the same as the falling share of poetry."},
+                          "en": "The median work has 56 characters (one seven-syllable regulated verse) in the 13th–16th centuries, then 75 in the 17th, 118 in the 18th and 157 in the 19th; the 9th century (Choe Chi-won, 168) and the 12th (80) are exceptions. The direction is the same as the falling share of poetry and the rising share of prose."},
     "a5_note_share": {"ko": "주(원주·교감주·난외주)는 전체 글자의 3.0%다. 세기별로는 19세기 1.9%에서 16세기 4.1% 사이이고, 9세기(최치원)만 11.6%다.",
                       "en": "Notes make up 3.0% of all characters, between 1.9% (19th century) and 4.1% (16th) in every century except the 9th (Choe Chi-won, 11.6%)."},
     "a6_own_share": {"ko": "편의 95.7%는 저자 자신의 글이다. 타인의 글은 서문·발문·행장·만사·부록이다. 여덟 문집(『망헌유고』·『추파집』·『창주유고』·『능허관만고』·『용이와집』·『내헌집』·『어당집』·『소송유고』)은 필자 태그가 저자와 한 편도 일치하지 않는다 — 필자 표기 관행 차이일 수 있다(가설, 표본 점검 대상).",
-                     "en": "95.7% of works are by the author; the rest are prefaces, postscripts, biographies, elegies and appendices by others. In eight collections no writer tag matches the author at all — possibly a tagging convention (a hypothesis, flagged for sample checking)."},
+                     "en": "95.7% of works are by the author; the rest are prefaces, postscripts, biographies, elegies and appendices by others. In eight collections (the Manghyeon yugo 忘軒遺稿, Chupa jip 秋坡集, Changju yugo 滄洲遺稿, Neungheogwan mango 凌虛關漫稿, Yongiwa jip 龍耳窩集, Naeheon jip 耐軒集, Eodang jip 峿堂集 and Sosong yugo 小松遺稿) no writer tag matches the author at all — possibly a tagging convention (a hypothesis, flagged for sample checking)."},
     "a7_gwon": {"ko": "간략해제가 「n권 n책」을 밝힌 851종 중 691종(81%)에서 목차의 卷n 수가 그 n과 같다. 어긋난 160종의 원인은 코딩하지 않았다.",
                 "en": "Of the 851 collections whose introduction states 'n fascicles, n volumes', 691 (81%) have exactly n '卷n' headings in the table of contents. The causes of the 160 mismatches were not coded."},
     "b1_poetry_share": {"ko": "저자 글 609,494편의 62.0%가 시다. 세기별로는 14~15세기 88%에서 16세기 75%, 17세기 62%, 18세기 51%, 19세기 42%로 내려온다. 글자 기준으로는 18.8%다 — 시는 편 수로는 많고 글자로는 적다. 곽지은(2026)이 보고한 방향(詩 최다, 점진 하락)과 같다.",
@@ -36,7 +36,7 @@ TAKE = {
     "b8_poem_length": {"ko": "시 한 편의 본문 글자 수 중앙값은 9세기(40자)를 빼면 모든 세기에서 56자 — 칠언율시 한 수의 길이다. 사분위는 28자 또는 40자(오언절구 20자·칠언절구 28자·오언율시 40자)와 56~109자 사이에 있고, 평균은 49~93자(9세기 48.7, 12세기 93.0)로 중앙값보다 크다 — 분포가 오른쪽으로 길다.",
                        "en": "The median poem has 56 characters in every century but the 9th (40) — the length of one seven-syllable regulated verse. Quartiles lie at 28 or 40 (quatrains have 20 or 28 characters, a five-syllable regulated verse 40) and 56–109; the mean (49–93; 48.7 in the 9th century, 93.0 in the 12th) exceeds the median — the distribution has a long right tail."},
     "c1_recipients": {"ko": "서간이 있는 895종의 저자의 서간 81,842편 중 93.4%에서 제목이 수신자 문자열을 담았다. 문집별 고유 수신자 수의 합은 34,890(전체에서 서로 다른 문자열은 25,303)이고, 한 문집의 고유 수신자 중앙값은 14, 수신자가 있는 서간 가운데 상위 3 수신자 점유율 중앙값은 41%다. 『간재집』(1,287)·『면우집』(1,033)·『송자대전』(798)이 수신자가 가장 많다.",
-                      "en": "In the 895 collections with letters, 93.4% of the 81,842 letters carry an addressee string in the title. Summed over collections there are 34,890 distinct addressees (25,303 distinct strings corpus-wide); a collection's median is 14, and among letters with an addressee the top three take a median 41%. The Ganjae jip (1,287), Myeonu jip (1,033) and Songja daejeon (798) have the most."},
+                      "en": "In the 895 collections with letters, 93.4% of the 81,842 letters carry an addressee string in the title. Summed over collections there are 34,890 distinct addressees (25,303 distinct strings corpus-wide); a collection's median is 14, and among letters with an addressee the top three take a median of 41%. The Ganjae jip (1,287), Myeonu jip (1,033) and Songja daejeon (798) have the most."},
     "c2_epitaph_subjects": {"ko": "880종에 저자가 쓴 비지·행장 19,789편이 있고 93.6%에서 피장자 문자열을 뽑았다(문집별 고유 합 17,972, 전체 고유 15,440). 『송사집』(968)·『송자대전』(576)·『면암집』(428)이 가장 많다.",
                             "en": "880 collections contain 19,789 epitaphs and biographies by the author; a subject string was parsed from 93.6% (17,972 distinct summed over collections, 15,440 corpus-wide). The Songsa jip (968), Songja daejeon (576) and Myeonam jip (428) have the most."},
     "c3_other_writers": {"ko": "1,120종에 저자 아닌 필자의 글 27,709편이 실려 있고 문집별 타인 필자 수의 합은 17,675, 중앙값은 8명이다. 『성재집』(173명)·『한주집』(143명)·『척암집』(138명)이 가장 많다.",
@@ -55,7 +55,7 @@ TAKE = {
 
 HOME_FIVE = {
     "ko": ["1,249종 637,203편 1억 8,300만 자. 저자 글의 62%가 시지만 글자로는 19%다.",
-           "저자 글 중 시 비중은 15세기 88%에서 19세기 42%로, 서간은 1%에서 30%로 — 전체 편당 글자 수는 56자에서 157자로.",
+           "저자 글 중 시 비중은 15세기 88%에서 19세기 42%로, 서간은 1%에서 30%로 — 전체 편당 글자 수 중앙값은 56자에서 157자로.",
            "서간 81,842편의 93%가 제목에 수신자를 적었다. 문집별 고유 수신자 합 34,890, 수신자가 있는 서간 가운데 상위 3 수신자 점유율의 문집별 중앙값은 41%다.",
            "저자의 49%가 문과방목과 연결된다 — 15세기 출생 83%, 19세기 22%. 급제 연령 중앙값 30세.",
            "몰년에서 간행까지 중앙값 66년. 15세기 출생 저자는 175년, 19세기는 15년."],
