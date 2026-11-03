@@ -20,7 +20,7 @@ All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute f
 | 저자 · authors | 1,248 (문과방목 연결 613) |
 | 지표 · metrics | 23 (A 7 · B 8 · C 3 · D 5) |
 
-포털 목록 1,251항목 중 1건(운암집, 2021 등록)은 내려받기 요청에 첨부 ID 가 돌아오지 않았고(포털 응답 `atachFileYn: N`, 원응답은 작업 기록에 보존), 1건(망헌유고 1571년, 2017 등록)은 2003년 구 스키마(UTF-16)로 된 같은 문집의 다른 판본이라(신 스키마 판과 85편 중 84편 본문 일치) 제외했다. Of the 1,251 portal entries, one (Unam jip, 2021) returned no attachment id (portal response `atachFileYn: N`, kept in the working records) and one (Manghŏn yugo 1571, 2017) is an old-schema (UTF-16) edition of a collection also present in the new schema (84 of 85 works identical); both are excluded.
+포털 목록 1,251항목 중 1건(운암집, 2021 등록)은 내려받기 요청에 첨부 ID 가 돌아오지 않았고(포털 응답 `atachFileYn: N`, 원응답은 작업 기록에 보존), 1건(망헌유고 1571년, 2017 등록)은 2003년 구 스키마(UTF-16)로 된 같은 문집의 다른 판본이라(신 스키마 판과 85편 중 84편 본문 일치) 제외했다. Of the 1,251 portal entries, one (Unam jip, 2021) returned no attachment id (portal response `atachFileYn: N`, kept in the working records) and one (Manghyeon yugo 1571, 2017) is an old-schema (UTF-16) edition of a collection also present in the new schema (84 of 85 works identical); both are excluded.
 
 ## 신뢰도 카드 · Reliability cards
 
@@ -63,4 +63,4 @@ python src/build_site.py                                 # -> site/
 
 ## 인용 · Citation
 
-Kwon, Bowon (2026). Munjip Metrics 1.0.1. https://bowonkwon.github.io/Munjip-Metrics/
+Kwon, Bowon (2026). Munjip Metrics 1.0.2. https://bowonkwon.github.io/Munjip-Metrics/
