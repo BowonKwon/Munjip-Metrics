@@ -18,7 +18,7 @@ Fields
 SITE = {
     "ko": {"title": "문집 메트릭스", "subtitle": "한국문집총간 1,249종을 편 단위로 센 수치와, 그 수치를 얼마나 믿어도 되는지"},
     "en": {"title": "Munjip Metrics", "subtitle": "Korean literary collections (Hanguk munjip chonggan) counted work by work, with a reliability card on every number"},
-    "version": "1.0",
+    "version": "1.0.1",
 }
 
 SERIES = {
@@ -59,7 +59,7 @@ SOURCES = {
 
 PRIOR = {
     "kwak_2026": {"ko": "곽지은(2026)은 한국문집총간과 한국역대문집총서의 문집을 7개 문체 단위로 나눠 시대별 비중을 구했다. 詩가 일관되게 최다이나 점차 줄다가 20세기에 반등, 서간은 지속 증가, 공거류는 19세기 후반 급락, 애제·서발·전기는 일정하다고 보고했고, 저자 활동기와 간행기 사이 약 1세기 시차를 밝혔다(초록 기준 — 수치는 원문 확인 뒤 싣는다).",
-                  "en": "Kwak Ji-eun (2026) split the collections of the Hanguk munjip chonggan and the Hanguk yeokdae munjip chongseo into seven genre units and measured their shares over time: poetry always largest but declining until a 20th-century rebound, letters rising steadily, memorials collapsing after the late 19th century, elegies, prefaces and biographies steady; the paper also reports a lag of about a century between an author's active years and the printing of the collection (from the abstract; figures to be added after reading the full text).",
+                  "en": "Kwak Ji-eun (2026) split the collections of the Hanguk munjip chonggan and the Hanguk yeokdae munjip chongseo into seven genre units and measured their shares over time: poetry always largest but declining until a 20th-century rebound, letters rising steadily, court documents falling sharply in the late 19th century, elegies, prefaces and biographies steady; the paper also reports a lag of about a century between an author's active years and the printing of the collection (from the abstract; figures to be added after reading the full text).",
                   "cite": "곽지은, 「한국 문집 내 문체 구성 변화에 대한 계량적 분석」, 『한문학논집』 73, 2026.", "cite_en": "Kwak Ji-eun, 'A quantitative analysis of changes in genre composition within Korean literary collections' (in Korean), Hanmunhak nonjip 73, 2026."},
     "choi_2020": {"ko": "최채기(2020): 한국문집총간 정편 663종 가운데 번역되지 않은 문집 291종(2020년 기준).",
                   "en": "Choi Chae-gi (2020): of the 663 collections in the first series, 291 had not been translated as of 2020.",
@@ -116,7 +116,7 @@ METRICS = [
                  formula="필자 한자성명 = 저자 한자성명인 편 / 전체 편", reading="", caveat="필자 태그가 비어 있으면 저자 글로 세지 않는다. 같은 이름의 다른 사람은 구별하지 못한다(저자와 동명인 필자는 드물다)."),
          en=dict(name="Share of own works", definition="Share of a collection's works written by the author; the rest are prefaces, postscripts, biographies, elegies and appendices by others.",
                  formula="Works whose writer equals the author / all works", reading="", caveat="A work with an empty writer tag is not counted as the author's. Namesakes cannot be told apart (rare for a collection's own author).")),
-    dict(id="a7_gwon", series="A", table="a_gwon_check", unit="volumes", fmt=",.0f", reliability="exact",
+    dict(id="a7_gwon", series="A", table="a_gwon_check", unit="fascicles", fmt=",.0f", reliability="exact",
          ko=dict(name="권 수와 권당 편 수", definition="목차의 「卷n」 제목 수로 센 권 수, 그리고 편 수를 권 수로 나눈 값.",
                  formula="목차제목 type=\"VOLUMETITLE\" 중 「卷」+숫자 형태의 수. 권당 편 수 = 편 수 / 권 수.", reading="", caveat="외집·별집·부록·연보는 「卷n」 꼴이 아니면 세지 않는다. 간략해제의 「n권 n책」과 자동 대조해 불일치율을 신뢰도 카드에 적는다. 불일치의 원인은 코딩하지 않았다."),
          en=dict(name="Fascicles and works per fascicle", definition="Fascicles counted from '卷n' headings in the table of contents, and works divided by fascicles.",
@@ -145,7 +145,7 @@ METRICS = [
          en=dict(name="Share of elegies, epitaphs and biographies", definition="Share of own works that commemorate others: elegies (哀祭類) plus epitaphs and biographies within the biography class.", formula="(哀祭類 + 碑誌類 + 行狀類) works / own works", reading="", caveat="Genealogies and 'other' within the biography class are excluded.")),
     dict(id="b6_prefaces_share", series="B", table="b_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="서발 비중", definition="저자 글 중 序跋類(서·발·증서)의 비율, 세기별.", formula="序跋類 편 / 저자 글", reading="", caveat="다른 사람의 책에 붙인 서문이 많다 — 저자의 교유 범위와 관련된다(해석은 하지 않는다)."),
-         en=dict(name="Share of prefaces and postscripts", definition="Share of own works that are prefaces, postscripts or farewell prefaces (序跋類), by century.", formula="Preface works / own works", reading="", caveat="Many are prefaces to other people's books.")),
+         en=dict(name="Share of prefaces and postscripts", definition="Share of own works that are prefaces, postscripts or farewell prefaces (序跋類), by century.", formula="Preface works / own works", reading="", caveat="Many are prefaces to other people's books, which relates to the range of the author's acquaintances (not interpreted here).")),
     dict(id="b7_other_share", series="B", table="b_other_share", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="기타류 잔여율", definition="저자 글 중 중분류가 「其他類」인 편의 비율 — 고전번역원 분류가 세분하지 않은 나머지.", formula="중분류 其他類 편 / 저자 글", reading="", caveat="분류 품질의 지표다. 값이 크면 그 세기의 문체 구성 수치는 거칠다."),
          en=dict(name="Residual 'other' share", definition="Share of own works whose minor class is 'other' (其他類) — what the ITKC classification did not subdivide.", formula="Works in 其他類 / own works", reading="", caveat="A measure of classification quality: where it is high, the genre shares for that century are coarse.")),
@@ -179,7 +179,7 @@ METRICS = [
                  reading="", caveat="연결률은 급제율이 아니다 — 급제하지 않은 저자(산림·승려·여성·고려인)는 정상적으로 연결되지 않는다. 간략해제는 급제를 거의 적지 않아 정밀도를 해제로 잴 수 없었고, 자·호 교차 일치율로 대신한다(신뢰도 카드)."),
          en=dict(name="Examination linkage and age at passing", definition="Share of authors linked to a passer in the civil-examination roster, and the distribution of the age at passing (East Asian reckoning) for linked authors.",
                  formula="Names NFKC-normalized (煕=熙 included). M1 same name and birth year (several rows of one clan seat: first pass = M1-first) / M2 same name, roster birth absent, courtesy or pen name identical / M3 same name, single candidate, roster birth absent, exam year within [birth+15, death (or birth+70)]. More than one survivor: unresolved. Linkage = (M1+M1-first+M2+M3) / authors.",
-                 reading="", caveat="Linkage is not a pass rate: authors who never sat the examination (rural scholars, monks, women, Goryeo authors) rightly stay unlinked. The short introductions rarely mention examinations, so precision could not be measured against them; a courtesy- and pen-name cross-check stands in (reliability card).")),
+                 reading="", caveat="Linkage is not a pass rate: authors who never passed the examination (rural scholars, monks, women, Goryeo authors) rightly stay unlinked. The short introductions rarely mention examinations, so precision could not be measured against them; a courtesy- and pen-name cross-check stands in (reliability card).")),
     dict(id="d3_pub_lag", series="D", table="d_centuries", unit="years", fmt=",.0f", reliability="exact",
          ko=dict(name="간행 시차", definition="원문 간행년에서 저자 몰년을 뺀 햇수의 중앙값과 사분위, 세기별.", formula="median(원문간행년 − 몰년), 간행년이 있는 문집만", reading="", caveat="서지의 원문간행년은 총간 저본의 간행년이다(초간이 아닐 수 있다). 간행년 없는 문집은 뺀다."),
          en=dict(name="Publication lag", definition="Median and quartiles of years from the author's death to the printing of the source edition, by century.", formula="median(publication year − death year), collections with a publication year only", reading="", caveat="The bibliographic year is that of the edition reproduced in the series, not necessarily the first printing; collections without a year are excluded."),

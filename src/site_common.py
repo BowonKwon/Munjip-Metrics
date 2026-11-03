@@ -160,6 +160,8 @@ def nice_ticks(lo: float, hi: float, n: int = 5) -> list[float]:
 
 
 def svg_lines(series, spec, width=900, height=320, ylabel="", xstep=None, bands=None) -> str:
+    series = [(cap(n, "en"), pts, ci) for n, pts, ci in series]   # sentence case for legends (Hangul is unaffected)
+    ylabel = cap(ylabel, "en")
     xs = [p[0] for _, pts, _ in series for p in pts]
     ys = [p[1] for _, pts, _ in series for p in pts if not math.isnan(p[1])]
     if not xs or not ys:
@@ -198,6 +200,9 @@ def svg_lines(series, spec, width=900, height=320, ylabel="", xstep=None, bands=
 
 
 def svg_bars(items, spec, width=900, row_h=22, label_w=240, xlabel="", errors=None) -> str:
+    items = [(cap(n, "en"), v, ci) for n, v, ci in items]   # sentence case for axis labels (Hangul and hanja are unaffected)
+    errors = {cap(k, "en"): v for k, v in errors.items()} if errors else errors
+    xlabel = cap(xlabel, "en")
     vals = [v for _, v, _ in items if not (isinstance(v, float) and math.isnan(v))]
     if not vals:
         return ""

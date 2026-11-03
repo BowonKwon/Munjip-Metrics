@@ -15,7 +15,7 @@ All 1,251 XML archives of the Hanguk munjip chonggan released by the Institute f
 | | |
 |---|---|
 | 문집 · collections | 1,249 (정편 663 · 속편 586) |
-| 편 · works | 637,203 (저자 저자 글 609,494) |
+| 편 · works | 637,203 (저자 글 609,494) |
 | 글자 · characters | 182,868,728 (본문 177,365,899 · 주 5,502,829) |
 | 저자 · authors | 1,248 (문과방목 연결 613) |
 | 지표 · metrics | 23 (A 7 · B 8 · C 3 · D 5) |
@@ -44,7 +44,17 @@ python src/check_works.py --src data/raw/itkc           # recount vs raw XML, id
 python src/link_authors.py --derived data/derived --munkwa <AKS 문과급제자 XML> --persons <AKS 인명 XML>
 python src/metrics_a.py; python src/metrics_b.py; python src/metrics_c.py; python src/metrics_d.py
 python src/reliability.py                                # from data/coding/*_coded.csv
-python src/build_site.py                                 # -> site/ (ko, en)
+python src/build_site.py                                 # -> site/ (ko, en); 공개 사이트는 그 사본인 docs/ · the published copy is docs/
+```
+
+위 1~4단계와 `reliability.py` 는 이 저장소에 없는 원자료(고전번역원 zip, 한국학중앙연구원 XML)가 있어야 돈다. 지표 스크립트는 `data/derived/works.csv` 를 읽지만 이 저장소에는 `data/works.csv.gz` 로 들어 있으므로, 이 저장소만으로 지표와 사이트를 다시 만들 때는 다음처럼 한다. `reliability.json` 은 그대로 쓰고, 글자 수 검산 문장(검산 보고서가 필요)은 「?」로 나온다.
+Steps 1–4 and `reliability.py` need source files not included here (ITKC archives, AKS XML). The metric scripts read `data/derived/works.csv`, while this repository ships `data/works.csv.gz`; to rebuild the metrics and the site from this repository alone (the shipped `reliability.json` is reused; the character-recount sentence shows "?" because it needs the check report):
+
+```
+mkdir -p data/derived && cp data/*.csv data/*.json data/derived/
+python -c "import gzip,shutil;[shutil.copyfileobj(gzip.open(f'data/{n}.csv.gz'),open(f'data/derived/{n}.csv','wb')) for n in ('works','letters')]"
+python src/metrics_a.py; python src/metrics_b.py; python src/metrics_c.py; python src/metrics_d.py
+python src/build_site.py                                 # -> site/
 ```
 
 ## 라이선스 · License
@@ -53,4 +63,4 @@ python src/build_site.py                                 # -> site/ (ko, en)
 
 ## 인용 · Citation
 
-Kwon, Bowon (2026). Munjip Metrics 1.0. https://bowonkwon.github.io/Munjip-Metrics/
+Kwon, Bowon (2026). Munjip Metrics 1.0.1. https://bowonkwon.github.io/Munjip-Metrics/

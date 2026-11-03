@@ -29,7 +29,7 @@ def read_xml(zf, name):
 
 
 def selftest_split():
-    """Minimal case from the Codex review: <내용>甲<원주>乙<line/>丙</원주>丁</내용> must give main 2, note 2."""
+    """Minimal case: <내용>甲<원주>乙<line/>丙</원주>丁</내용> must give main 2, note 2."""
     import xml.etree.ElementTree as ET
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from build_works import itertext_split

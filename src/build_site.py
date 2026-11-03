@@ -26,7 +26,7 @@ except ImportError:  # before the takeaways are written
     TAKE, HOME_FIVE, PAGE_TAKE = {}, {"ko": [], "en": []}, {}
 
 VERSION = SITE["version"]
-BUILD_DATE = "2026-11-03"
+BUILD_DATE = "2026-11-04"
 REPO = "https://github.com/BowonKwon/Munjip-Metrics"
 ITKC = "https://db.itkc.or.kr/dir/node?dataId="
 GENRES = ["詩類", "書簡類", "序跋類", "傳記類", "公車類", "哀祭類", "雜著類"]
@@ -40,7 +40,7 @@ T = {
                reliability="신뢰도 카드", rel_exact="집계값 — 원본 XML에서 그대로 센 수", rel_ext="외부 대조값 — 선행 수치와 맞춰 본 값", rel_samp="표본 정밀도 — 제목 파싱·인물 연결의 정확도를 코딩한 표본에서 잰 값",
                table="표", download="CSV 내려받기", search="필터", metric_list="지표 목록", century_list="세기 목록", collection_list="문집 목록", person_list="인물 면",
                license="라이선스", cite="인용", built="생성일", version="판", hub="공개 자료 전체", itkc_link="고전종합DB 원문",
-               works="편", own="저자 글", chars="글자(한자)", notes="주 글자", collections="문집", authors="저자", century="세기", series_col="편", share="비율", n="건수", prior="선행 결과", ours="이 사이트",
+               works="편", own="저자 글", chars="글자(한자)", notes="주 글자", collections="문집", authors="저자", century="세기", series_col="구분", share="비율", n="건수", prior="선행 결과", ours="이 사이트",
                author="저자", birth="생년", death="몰년", pub="간행년", title="서명", genre="문체", recipients="수신자", letters="서간", epitaphs="비지·행장"),
     "en": dict(site=SITE["en"]["title"], tagline=SITE["en"]["subtitle"],
                nav_home="Home", nav_centuries="Centuries", nav_collections="Collections", nav_persons="Persons", nav_metrics="Metrics", nav_prior="Prior results", nav_reading="Reading edition", nav_data="Data", nav_method="Method and limits", lang_other="한국어",
@@ -63,7 +63,26 @@ def century_label(c, lang):
     return f"{c}th century" if c not in (21, 22, 23) else f"{c}st century"
 
 
-def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", active: str = "") -> str:
+
+UNIT_KO = {"works": "편", "characters": "자", "collections": "종", "share": "비율", "fascicles": "권", "volumes": "권", "strings": "문자열", "persons": "명", "years": "년"}
+
+
+def series_label(v, lang):
+    if lang == "ko":
+        return v
+    return {"정편": "first series", "속편": "supplement", "전체": "all"}.get(v, v)
+
+
+def _n_match(D) -> str:
+    v = D.check.split("chars match ")[1].split("\n")[0].strip() if "chars match" in D.check else "?"
+    return f"{int(v):,}" if v.isdigit() else v
+
+
+def _title_hj(D, cid) -> str:
+    r = D.col[D.col.collection_id == cid]
+    return r.title_hj.iloc[0] if len(r) else cid
+
+def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", active: str = "", rel: str = "index.html") -> str:
     t = T[lang]
     root = "../" * depth
     other = "en" if lang == "ko" else "ko"
@@ -85,7 +104,7 @@ def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", activ
 <style>{sc.CSS}</style></head><body>
 <header><a class="brand" href="{root}{lang}/index.html">{t['site']}</a>
 <nav>{navh}</nav>
-<div class="right"><button id="theme" class="theme" type="button" aria-label="theme">◑</button><a class="lang" href="{root}{other}/index.html">{t['lang_other']}</a></div></header>
+<div class="right"><button id="theme" class="theme" type="button" aria-label="theme">◑</button><a class="lang" href="{root}{other}/{rel}">{t['lang_other']}</a></div></header>
 <main>{body}</main>
 <footer>{t['site']} · {t['version']} {VERSION} · {t['built']} {BUILD_DATE} · <a href="{REPO}">GitHub</a> · {t['hub']} <a href="https://bowonkwon.github.io/{hub_path}">bowonkwon.github.io</a><br>{attribution}</footer>
 <script>{sc.JS}</script></body></html>"""
@@ -183,7 +202,7 @@ def headline(m, D: Data, lang):
     if mid == "d4_translation":
         return f"{D.dcol.n_translated.sum()/D.dcol.n_works.sum():.1%}", (f"편 중 번역문 연계 · 연계 0건 문집 {int((D.dcol.n_translated == 0).sum()):,}종" if ko else f"of works have a linked translation · {int((D.dcol.n_translated == 0).sum()):,} collections with none")
     if mid == "d5_punct":
-        return f"{D.dcol.n_punct.sum()/D.dcol.n_works.sum():.1%}", ("편 중 교감표점 연계" if ko else "of works have a collated edition")
+        return f"{D.dcol.n_punct.sum()/D.dcol.n_works.sum():.1%}", ("편 중 교감표점 연계" if ko else "of works have a collated and punctuated edition")
     return "", ""
 
 
@@ -194,7 +213,7 @@ def reliability_card(m, D: Data, lang) -> str:
     if "external" in m:
         body.append(f"<p>{esc(m['external'][lang])}</p>")
     if mid in ("a1_works", "a2_chars"):
-        n_match = D.check.split("chars match ")[1].split("\n")[0] if "chars match" in D.check else "?"
+        n_match = _n_match(D)
         body.append("<p>" + (f"검산: 문집 {n_match}종 전부에서 원본 XML 의 <내용> 문자 수 재계산과 일치, 문자 참조 잔존 0, 편 ID 중복 0." if ko else
                              f"Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references; no duplicate work ids.") + "</p>")
     if mid == "a7_gwon":
@@ -208,7 +227,7 @@ def reliability_card(m, D: Data, lang) -> str:
     if m["series"] == "B" and g:
         body.append("<p>" + (f"분류 품질: 저자 글 층화 표본 {g['n']}편(대분류 × 세기)을 제목으로 블라인드 코딩한 결과 고전번역원 대분류와 일치 {g['precision']:.1%} (윌슨 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; 판단 유보 {g['undecided']}건은 불일치로 셈" + (f"; 그중 {D.precision['genre_recode']['n']}편을 다른 코더가 블라인드로 다시 코딩해 일치 {D.precision['genre_recode']['agreement']:.0%}" if D.precision.get('genre_recode') else "") + ")." if ko else
                              f"Classification quality: a stratified sample of {g['n']} own works (major class × century) was blind-coded from titles; {g['precision']:.1%} agree with the ITKC major class (Wilson 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; {g['undecided']} undecided counted as disagreement" + (f"; a second coder re-coded {D.precision['genre_recode']['n']} of them blind with {D.precision['genre_recode']['agreement']:.0%} agreement" if D.precision.get('genre_recode') else "") + ").") +
-                    ((f" 알려진 덩어리 오류: 『{blk['title_ko']}』({blk['collection_id']})의 冊文類 {blk['n_works']:,}편은 제목이 시다 — 고전번역원 분류대로 두고 여기 적는다." if ko else f" Known block error: {blk['n_works']:,} works of {blk['collection_id']} filed as 冊文類 carry poem titles; they are left as classified and noted here.") if blk else "") + "</p>")
+                    ((f" 알려진 덩어리 오류: 『{blk['title_ko']}』({blk['collection_id']})의 冊文類 {blk['n_works']:,}편은 제목이 시다 — 고전번역원 분류대로 두고 여기 적는다." if ko else f" Known block error: {blk['n_works']:,} works of {_title_hj(D, blk['collection_id'])} ({blk['collection_id']}) filed as 冊文類 carry poem titles; they are left as classified and noted here.") if blk else "") + "</p>")
     key = {"c1_recipients": "recipients", "c2_epitaph_subjects": "epitaphs"}.get(mid)
     p = D.precision.get(key) if key else None
     if kind == "sampled-precision":
@@ -242,7 +261,7 @@ def metric_figure(m, D: Data, lang) -> str:
     if mid == "a1_works":
         out.append(fig(top_bars(D, col, "n_works", ",.0f", lang, xlabel=t["works"]), ("편 수 상위 30 문집." if ko else "The 30 collections with the most works.")))
         out.append(fig(svg_lines([cen_series(D.tot.reset_index(), "n_works", lang, ("편" if ko else "works"), 0), cen_series(D.tot.reset_index(), "n_own_works", lang, ("저자 글" if ko else "own works"), 1)], ",.0f", xstep=1), ("저자 생년 세기별 편 수." if ko else "Works by the author's birth century.")))
-        out.append(table_html(col.reset_index(), [("label_" + lang, t["title"], None), ("author_" + ("ko" if ko else "hj"), t["author"], None), ("birth", t["birth"], None), ("series", t["series_col"], None), ("n_works", t["works"], ",.0f"), ("n_own_works", t["own"], ",.0f"), ("own_share", t["share"], ".1%")], "t_a1", lang))
+        out.append(table_html(col.reset_index().assign(series_l=lambda f: f.series.map(lambda v: series_label(v, lang))), [("label_" + lang, t["title"], None), ("author_" + ("ko" if ko else "hj"), t["author"], None), ("birth", t["birth"], None), ("series_l", t["series_col"], None), ("n_works", t["works"], ",.0f"), ("n_own_works", t["own"], ",.0f"), ("own_share", t["share"], ".1%")], "t_a1", lang))
     elif mid == "a2_chars":
         out.append(fig(top_bars(D, col, "chars", ",.0f", lang, xlabel=t["chars"]), ("글자 수 상위 30 문집(본문 + 주)." if ko else "The 30 collections with the most characters (text + notes).")))
         out.append(fig(svg_lines([cen_series(D.tot.reset_index(), "chars_main", lang, ("본문" if ko else "text"), 0), cen_series(D.tot.reset_index(), "chars_note", lang, ("주" if ko else "notes"), 1)], ",.0f", xstep=1), ("세기별 글자 수." if ko else "Characters by century.")))
@@ -250,8 +269,8 @@ def metric_figure(m, D: Data, lang) -> str:
     elif mid == "a3_centuries":
         s = D.ser
         out.append(fig(svg_lines([cen_series(s[s.series == "정편"], "n_collections", lang, ("정편" if ko else "first series"), 0), cen_series(s[s.series == "속편"], "n_collections", lang, ("속편" if ko else "supplement"), 1)], ",.0f", xstep=1), ("저자 생년 세기별 문집 수, 정편·속편." if ko else "Collections by the author's birth century, first series and supplement.")))
-        tbl = D.cen.copy(); tbl["century"] = tbl.birth_century.map(cl)
-        out.append(table_html(tbl, [("century", t["century"], None), ("series", t["series_col"], None), ("n_collections", t["collections"], ",.0f"), ("n_authors", t["authors"], ",.0f"), ("n_works", t["works"], ",.0f"), ("chars", t["chars"], ",.0f")], "t_a3", lang, filt=False))
+        tbl = D.cen.copy(); tbl["century"] = tbl.birth_century.map(cl); tbl["series_l"] = tbl.series.map(lambda v: series_label(v, lang))
+        out.append(table_html(tbl, [("century", t["century"], None), ("series_l", t["series_col"], None), ("n_collections", t["collections"], ",.0f"), ("n_authors", t["authors"], ",.0f"), ("n_works", t["works"], ",.0f"), ("chars", t["chars"], ",.0f")], "t_a3", lang, filt=False))
     elif mid == "a4_chars_per_work":
         out.append(fig(svg_lines([cen_series(D.tot.reset_index(), "chars_per_work_median", lang, ("중앙값" if ko else "median"), 0), cen_series(D.tot.reset_index(), "chars_per_work_mean", lang, ("평균" if ko else "mean"), 1)], ",.0f", xstep=1), ("편당 글자 수, 세기별." if ko else "Characters per work by century.")))
     elif mid == "a5_note_share":
@@ -262,8 +281,8 @@ def metric_figure(m, D: Data, lang) -> str:
         low = col.sort_values("own_share").head(30)
         out.append(fig(svg_bars([(D.label(r, lang), float(r.own_share), 2) for _, r in low.iterrows()], ".1%", row_h=20, label_w=220), ("저자 글 비율이 낮은 30 문집 — 부록·타인 글이 많은 문집." if ko else "The 30 collections with the lowest own-work share — collections heavy with appendices and others' writing.")))
     elif mid == "a7_gwon":
-        g = D.gwon.copy()
-        out.append(table_html(g, [("title_ko", t["title"], None), ("n_gwon_titles", ("목차 卷n 수" if ko else "卷n headings"), ",.0f"), ("haeje_gwon", ("해제 권수" if ko else "fascicles per introduction"), ",.0f"), ("haeje_chaek", ("해제 책수" if ko else "volumes per introduction"), ",.0f"), ("match", ("일치" if ko else "match"), ",.0f")], "t_a7", lang))
+        g = D.gwon.merge(D.col[["collection_id", "title_hj"]], on="collection_id", how="left")
+        out.append(table_html(g, [(("title_ko" if ko else "title_hj"), t["title"], None), ("n_gwon_titles", ("목차 卷n 수" if ko else "卷n headings"), ",.0f"), ("haeje_gwon", ("해제 권수" if ko else "fascicles per introduction"), ",.0f"), ("haeje_chaek", ("해제 책수" if ko else "volumes per introduction"), ",.0f"), ("match", ("일치" if ko else "match"), ",.0f")], "t_a7", lang))
     elif mid in ("b1_poetry_share", "b3_letters_share", "b4_memorials_share", "b6_prefaces_share"):
         g = {"b1_poetry_share": "詩類", "b3_letters_share": "書簡類", "b4_memorials_share": "公車類", "b6_prefaces_share": "序跋類"}[mid]
         b = D.b[D.b.genre1 == g]; ba = D.b_all[D.b_all.genre1 == g]
@@ -331,7 +350,7 @@ def metric_figure(m, D: Data, lang) -> str:
             out.append("<h2>" + ("문집별" if ko else "By collection") + "</h2>" + table_html(dl, [("label_" + lang, t["title"], None), ("death", t["death"], ".0f"), ("pub_year", t["pub"], ".0f"), ("pub_lag", ("시차(년)" if ko else "lag (years)"), ",.0f")], "t_d3c", lang))
         elif mid in ("d4_translation", "d5_punct"):
             c = "translation_share" if mid == "d4_translation" else "punct_share"
-            out.append(fig(svg_lines([cen_series(dc, c, lang, ("비율" if ko else "share"), 0)], ".0%", xstep=1), (("번역문 연계 편 비율, 세기별." if mid == "d4_translation" else "교감표점 연계 편 비율, 세기별.") if ko else ("Share of works with a translation by century." if mid == "d4_translation" else "Share of works with a collated edition by century."))))
+            out.append(fig(svg_lines([cen_series(dc, c, lang, ("비율" if ko else "share"), 0)], ".0%", xstep=1), (("번역문 연계 편 비율, 세기별." if mid == "d4_translation" else "교감표점 연계 편 비율, 세기별.") if ko else ("Share of works linked to a translation, by century." if mid == "d4_translation" else "Share of works linked to a collated and punctuated edition, by century."))))
             cols = [("century_l", t["century"], None), ("n_collections", t["collections"], ",.0f"), ("n_works", t["works"], ",.0f"), (c, t["share"], ".1%")] + ([("collections_no_translation", ("번역 0건 문집" if ko else "no translation"), ",.0f"), ("collections_full_translation", ("전편 번역 문집" if ko else "fully translated"), ",.0f")] if mid == "d4_translation" else [])
             out.append(table_html(dc, cols, "t_d4", lang, filt=False))
     return "".join(out)
@@ -341,7 +360,7 @@ def metric_figure(m, D: Data, lang) -> str:
 def metric_page(m, D, lang):
     t = T[lang]; L = m[lang]
     hv, hl = headline(m, D, lang)
-    body = [f'<div class="eyebrow"><span class="tag layer">{esc(SERIES[m["series"]][lang])}</span><span class="tag">{esc(m["unit"])}</span></div>',
+    body = [f'<div class="eyebrow"><span class="tag layer">{esc(SERIES[m["series"]][lang])}</span><span class="tag">{esc(UNIT_KO.get(m["unit"], m["unit"]) if lang == "ko" else m["unit"])}</span></div>',
             f'<div class="mhero"><div><h1>{esc(L["name"])}</h1><p class="lead">{esc(L["definition"])}</p></div><div class="big">{esc(hv)}<small>{esc(hl)}</small></div></div>']
     if m["id"] in TAKE:
         body.append(take_block(TAKE[m["id"]][lang], lang))
@@ -355,13 +374,13 @@ def metric_page(m, D, lang):
     body.append(reliability_card(m, D, lang))
     body.append(metric_figure(m, D, lang))
     body.append(f'<p class="files"><a href="../../data/{m["table"]}.csv">{t["download"]}: {m["table"]}.csv</a></p>')
-    return page(lang, L["name"], "".join(body), depth=2, desc=L["definition"], active="metrics")
+    return page(lang, L["name"], "".join(body), depth=2, desc=L["definition"], active="metrics", rel=f"metrics/{m['id']}.html")
 
 
 def metrics_index(D, lang):
     t = T[lang]; ko = lang == "ko"
     body = [f"<h1>{t['metric_list']}</h1>", '<p class="src" style="max-width:80ch">' + (("「저자 글」은 필자 태그가 문집의 저자와 같은 편(609,494편), 「타인 글」은 같은 문집에 실린 남의 서문·발문·행장·만사다. 세기는 저자 생년 기준. 지표마다 정의·공식·한계와 신뢰도 카드가 있다." if ko else
-            "'Own works' are works whose writer tag is the collection's author (609,494); 'works by others' are prefaces, postscripts, biographies and elegies printed in the same collection. Centuries follow the author's birth year. Every metric page gives definition, formula, caveats and a reliability card.")) + "</p>"]
+            "'Own works' are works whose writer tag is the collection's author (609,494); 'works by others' are prefaces, postscripts, biographies and elegies printed in the same collection. Centuries follow the author's birth year. Every metric page gives a definition, a formula, caveats and a reliability card.")) + "</p>"]
     for s, sl in SERIES.items():
         body.append(f"<h2>{esc(sl[lang])}</h2><p class='src' style='max-width:80ch'>{esc(SERIES_INTRO[s][lang])}</p><div class='cards'>")
         for m in METRICS:
@@ -369,7 +388,7 @@ def metrics_index(D, lang):
                 hv, hl = headline(m, D, lang)
                 body.append(f'<a class="card s-{s}" href="{m["id"]}.html"><b>{esc(m[lang]["name"])}</b><span class="kv">{esc(hv)}<small>{esc(hl)}</small></span><small>{esc(m[lang]["definition"])}</small></a>')
         body.append("</div>")
-    return page(lang, t["metric_list"], "".join(body), depth=2, active="metrics")
+    return page(lang, t["metric_list"], "".join(body), depth=2, active="metrics", rel="metrics/index.html")
 
 
 def collection_page(r, D, lang, is_person=False):
@@ -378,7 +397,7 @@ def collection_page(r, D, lang, is_person=False):
     L = D.letters[D.letters.collection_id == cid]; L = L.iloc[0] if len(L) else None
     E = D.epi[D.epi.collection_id == cid]; E = E.iloc[0] if len(E) else None
     dl = D.dcol[D.dcol.collection_id == cid].iloc[0]
-    a = D.authors[D.authors.author_id == f"{r.author_hj}_{r.birth if not pd.isna(r.birth) else 'x'}"]; a = a.iloc[0] if len(a) else None
+    a = D.authors[D.authors.author_id == f"{r.author_hj}_{int(r.birth) if not pd.isna(r.birth) else 'x'}"]; a = a.iloc[0] if len(a) else None
     title = f"{r.title_ko}({r.title_hj})" if ko else f"{r.title_hj} ({r.title_ko})"
     sub = (f"{r.author_ko}({r.author_hj}) · {fmt(r.birth, '.0f')}~{fmt(r.death, '.0f')} · {r.series} 제{r.jip_start[1:].lstrip('0')}~{r.jip_end[1:].lstrip('0')}집" if ko else
            f"{r.author_hj} ({r.author_ko}) · {fmt(r.birth, '.0f')}–{fmt(r.death, '.0f')} · {'first series' if r.series == '정편' else 'supplement'} vols. {r.jip_start[1:].lstrip('0')}–{r.jip_end[1:].lstrip('0')}")
@@ -398,10 +417,10 @@ def collection_page(r, D, lang, is_person=False):
         s = col_df[col].dropna()
         return float((s < v).mean()) if len(s) else float("nan")
     for name, v, col_df, col, spec in [(("시 비중" if ko else "poetry share"), bc[f"share_works_詩類"] if bc is not None else float("nan"), D.b_col, "share_works_詩類", ".1%"),
-                                        (("서간 비중" if ko else "letters share"), bc[f"share_works_書簡類"] if bc is not None else float("nan"), D.b_col, "share_works_書簡類", ".1%"),
+                                        (("서간 비중" if ko else "letter share"), bc[f"share_works_書簡類"] if bc is not None else float("nan"), D.b_col, "share_works_書簡類", ".1%"),
                                         (("편당 글자 중앙값" if ko else "median characters per work"), r.chars_per_work_median, D.col, "chars_per_work_median", ",.0f"),
                                         (("저자 글 비율" if ko else "own-work share"), r.own_share, D.col, "own_share", ".1%"),
-                                        (("번역문 연계 비율" if ko else "translation share"), dl.translation_share, D.dcol, "translation_share", ".1%")]:
+                                        (("번역문 연계 비율" if ko else "linked-translation share"), dl.translation_share, D.dcol, "translation_share", ".1%")]:
         rows.append((name, v, pct(col_df, col, v), spec))
     body.append("<h2>" + ("이 문집의 지표" if ko else "Metrics for this collection") + "</h2><div class='wrap'><table><thead><tr><th>" + ("지표" if ko else "Metric") + f"</th><th class='num'>{cap(t['ours'], lang)}</th><th class='num'>" + ("백분위(전체 문집 중)" if ko else "Percentile among all collections") + "</th></tr></thead><tbody>" +
                 "".join(f"<tr><td>{esc(n)}</td><td class='num'>{fmt(v, sp)}</td><td class='num'>{fmt(p, '.0%')}</td></tr>" for n, v, p, sp in rows) + "</tbody></table></div>")
@@ -415,11 +434,12 @@ def collection_page(r, D, lang, is_person=False):
         body.append("<h2>" + ("비지·행장" if ko else "Epitaphs and biographies") + "</h2><p>" + (f"저자가 쓴 비지·행장 {int(E.n_epitaphs):,}편, 제목 파싱 {int(E.n_parsed):,}편, 피장자 문자열 고유 {int(E.subj_n_unique):,}." if ko else
                                                                                    f"{int(E.n_epitaphs):,} epitaphs and biographies by the author; {int(E.n_parsed):,} titles parsed; {int(E.subj_n_unique):,} distinct subject strings.") + "</p>")
     if a is not None:
-        link = (f"문과방목 연결: {a.munkwa_rule} — {fmt(a.exam_year, '.0f')}년 {a.exam_name} ({a.munkwa_bon}), 급제 연령 {fmt(a.exam_age, '.0f')}세." if a.linked == 1 else "문과방목에 연결되지 않음(급제 기록 없음 또는 미확정).") if ko else \
-               (f"Examination roster: rule {a.munkwa_rule} — passed {fmt(a.exam_year, '.0f')} ({a.exam_name}, clan seat {a.munkwa_bon}), age {fmt(a.exam_age, '.0f')}." if a.linked == 1 else "Not linked to the examination roster (no record found, or ambiguous).")
-        body.append("<h2>" + t["author"] + f"</h2><p>{esc(link)} " + (f"한국역대인명정보: {a.persons_rule}" + (f", 몰년 일치" if a.death_agrees == 1 else (", 몰년 불일치" if a.death_agrees == 0 else "")) + "." if ko else f"AKS persons: {a.persons_rule}" + (", death year agrees" if a.death_agrees == 1 else (", death year differs" if a.death_agrees == 0 else "")) + ".") + "</p>")
+        has_age = not pd.isna(a.exam_age)
+        link = (f"문과방목 연결: {a.munkwa_rule} — {fmt(a.exam_year, '.0f')}년 {a.exam_name} ({a.munkwa_bon})" + (f", 급제 연령 {fmt(a.exam_age, '.0f')}세" if has_age else "") + "." if a.linked == 1 else "문과방목에 연결되지 않음(급제 기록 없음 또는 미확정).") if ko else \
+               (f"Examination roster: rule {a.munkwa_rule} — passed {fmt(a.exam_year, '.0f')} ({a.exam_name}, clan seat {a.munkwa_bon})" + (f", age {fmt(a.exam_age, '.0f')}" if has_age else "") + "." if a.linked == 1 else "Not linked to the examination roster (no record found, or ambiguous).")
+        body.append("<h2>" + cap(t["author"], lang) + f"</h2><p>{esc(link)} " + (f"한국역대인명정보: {a.persons_rule}" + (f", 몰년 일치" if a.death_agrees == 1 else (", 몰년 불일치" if a.death_agrees == 0 else "")) + "." if ko else f"AKS persons: {a.persons_rule}" + (", death year agrees" if a.death_agrees == 1 else (", death year differs" if a.death_agrees == 0 else "")) + ".") + "</p>")
     body.append(f'<p class="links"><a href="{ITKC}{esc(cid)}">{t["itkc_link"]}</a></p>')
-    return page(lang, title, "".join(body), depth=2, active="persons" if is_person else "collections")
+    return page(lang, title, "".join(body), depth=2, active="persons" if is_person else "collections", rel=f"collections/{cid}.html")
 
 
 def collections_index(D, lang):
@@ -437,7 +457,7 @@ def collections_index(D, lang):
                    f'<td class="num" data-v="{r.n_works}">{fmt(float(r.n_works), ",.0f")}</td><td class="num" data-v="{r.chars}">{fmt(float(r.chars), ",.0f")}</td><td class="num" data-v="{p}">{fmt(p, ".0%")}</td></tr>')
     out.append("</tbody></table></div>")
     body.append("".join(out))
-    return page(lang, t["collection_list"], "".join(body), depth=2, active="collections")
+    return page(lang, t["collection_list"], "".join(body), depth=2, active="collections", rel="collections/index.html")
 
 
 def century_page(c, D, lang):
@@ -453,12 +473,12 @@ def century_page(c, D, lang):
     items = [((GENRE_KO[g] if ko else GENRE_EN[g]), float(b.loc[g, "share_works"]) if not pd.isna(b.loc[g, "share_works"]) else float("nan"), i % 4) for i, g in enumerate(GENRES)]
     body.append("<h2>" + ("문체 구성(저자 글, 편 기준)" if ko else "Genre mix (own works, by works)") + "</h2>" + fig(svg_bars(items, ".1%", row_h=22, label_w=200), ""))
     body.append("<h2>" + ("이 세기 출생 저자의 문집" if ko else "Collections by authors born in this century") + "</h2>")
-    out = ['<div class="wrap"><table class="sort fixed"><thead><tr><th>' + t["title"] + "</th><th>" + t["author"] + "</th><th>" + t["birth"] + f'</th><th class="num">{t["works"]}</th><th class="num">{t["chars"]}</th></tr></thead><tbody>']
+    out = ['<div class="wrap"><table class="sort fixed"><thead><tr><th>' + cap(t["title"], lang) + "</th><th>" + cap(t["author"], lang) + "</th><th>" + cap(t["birth"], lang) + f'</th><th class="num">{cap(t["works"], lang)}</th><th class="num">{cap(t["chars"], lang)}</th></tr></thead><tbody>']
     for _, r in cols.iterrows():
         out.append(f'<tr><td><a href="../collections/{r.collection_id}.html">{esc(r.title_ko if ko else r.title_hj)}</a></td><td>{esc(r.author_ko if ko else r.author_hj)}</td><td>{fmt(r.birth, ".0f")}</td><td class="num" data-v="{r.n_works}">{fmt(float(r.n_works), ",.0f")}</td><td class="num" data-v="{r.chars}">{fmt(float(r.chars), ",.0f")}</td></tr>')
     out.append("</tbody></table></div>")
     body.append("".join(out))
-    return page(lang, cl, "".join(body), depth=2, active="centuries")
+    return page(lang, cl, "".join(body), depth=2, active="centuries", rel=f"centuries/{int(c)}.html")
 
 
 def centuries_index(D, lang):
@@ -470,7 +490,7 @@ def centuries_index(D, lang):
         c = int(r.birth_century)
         body.append(f'<a class="card s-A" href="{c}.html"><b>{esc(century_label(c, lang))}</b><small>{int(r.n_collections):,} {t["collections"]} · {int(r.n_authors):,} {t["authors"]} · {int(r.n_works):,} {t["works"]}</small></a>')
     body.append("</div>")
-    return page(lang, t["century_list"], "".join(body), depth=2, active="centuries")
+    return page(lang, t["century_list"], "".join(body), depth=2, active="centuries", rel="centuries/index.html")
 
 
 def persons_page(D, lang):
@@ -481,9 +501,9 @@ def persons_page(D, lang):
         if not len(rr):
             continue
         r = rr.iloc[0]
-        body.append(f'<a class="card s-D" href="collections/{r.collection_id}.html"><b>{esc(nko if ko else nen)} — {esc(r.title_ko + "(" + hj + ")" if ko else hj)}</b><small>{fmt(r.birth, ".0f")}–{fmt(r.death, ".0f")} · {int(r.n_works):,} {t["works"]} · {int(r.chars):,} {t["chars"]}</small></a>')
+        body.append(f'<a class="card s-D" href="collections/{r.collection_id}.html"><b>{esc(nko if ko else nen)} — {esc(r.title_ko + "(" + hj + ")" if ko else hj)}</b><small>{fmt(r.birth, ".0f")}{"~" if ko else "–"}{fmt(r.death, ".0f")} · {int(r.n_works):,}{"" if ko else " "}{t["works"]} · {int(r.chars):,} {t["chars"]}</small></a>')
     body.append("</div>")
-    return page(lang, t["person_list"], "".join(body), depth=1, active="persons")
+    return page(lang, t["person_list"], "".join(body), depth=1, active="persons", rel="persons.html")
 
 
 def home(D, lang):
@@ -533,7 +553,7 @@ def prior_page(D, lang):
                                                        "Separates what is new here from what was already measured: the genre-composition trend (Kwak 2026), the 1,258-person dataset (Choi 2021), the 291 untranslated collections (Choi 2020) and the XML defects (Choi et al. 2021) existed before and sit next to this site's recount. Only figures read from the original publications are included.") + "</p>"]
     for k, p in PRIOR.items():
         body.append(f'<div class="spec"><p>{esc(p[lang])}</p><p class="src">{esc(p.get("cite_en", p["cite"]) if lang == "en" else p["cite"])}</p></div>')
-    return page(lang, t["nav_prior"], "".join(body), depth=1, active="prior")
+    return page(lang, t["nav_prior"], "".join(body), depth=1, active="prior", rel="prior.html")
 
 
 DATA_FILES = ["works.csv.gz", "collections.csv", "authors.csv", "letters.csv.gz", "epitaphs.csv", "a_collections.csv", "a_centuries.csv", "a_gwon_check.csv",
@@ -549,12 +569,12 @@ def data_page(D, lang, files):
             '<div class="files">' + "".join(f'<a href="../data/{f}">{f}</a>' for f in files) + "</div>", '<p class="files"><a href="../data/datapackage.json">datapackage.json</a> · <a href="https://github.com/BowonKwon/Munjip-Metrics/tree/main/data/coding">data/coding/</a> (' + ("코드북·표본·판정" if ko else "codebook, samples, judgments") + ")</p>",
             "<h2>" + t["license"] + "</h2><p>" + ("파생 표: 이용허락범위 제한 없는 공공데이터의 2차 저작물이며, 이 사이트의 자체 저작 부분은 CC BY 4.0. 코드: MIT. 원문·분류·제목은 한국고전번역원, 방목·인명은 한국학중앙연구원의 것이다." if ko else
                                                    "Derived tables are derivative works of public data released without license restriction; this site's own contributions are CC BY 4.0, code MIT. Text, classification and titles belong to the ITKC; the roster and person data to the Academy of Korean Studies.") + "</p>"]
-    return page(lang, t["nav_data"], "".join(body), depth=1, active="data")
+    return page(lang, t["nav_data"], "".join(body), depth=1, active="data", rel="data.html")
 
 
 def method_page(D, lang):
     t = T[lang]; ko = lang == "ko"
-    n_match = D.check.split("chars match ")[1].split("\n")[0] if "chars match" in D.check else "?"
+    n_match = _n_match(D)
     secs = []
     if ko:
         secs.append(f"<h1>방법·한계</h1><h2>자료</h2><p>{esc(SOURCES['itkc_munjip']['ko'])}</p><p>{esc(SOURCES['aks_munkwa']['ko'])} {esc(SOURCES['aks_persons']['ko'])}</p>")
@@ -566,7 +586,7 @@ def method_page(D, lang):
         secs.append("<h2>관계 문체</h2><p>서간 수신자는 제목이 答·與·上·寄·復·報·奉·呈·贈·簡·謝 로 시작할 때 그 뒤부터 書·簡·問目·別紙·狀 등 앞까지의 문자열이고, 비지·행장 피장자는 墓誌銘·墓碣銘·神道碑·行狀 등 앞의 문자열(贈·故·先考 등 머리말 제거)이다. 1.0 은 문자열을 사람으로 합치지 않는다 — 자·호·관직으로 달리 불린 같은 사람은 다른 수신자로 센다. 파싱 정밀도는 표본으로 잰다.</p>")
         secs.append("<h2>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>생년 없는 저자 8명(841편, 저자 글 709)은 A·B 계열 세기 표에 「생년 미상」 행으로 따로 있고, C·D 계열 세기 표에는 없다(그 표의 합은 생년 있는 저자만). 지표 머리의 전체 값(저자 1,248·편 637,203·저자 글 609,494)에는 들어간다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
         secs.append("<h2>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 포털 파일 이력은 1,251항목, 내려받은 첨부는 1,250건(운암집 1건은 첨부 없음), 채택한 문집 zip 은 1,249건(구 스키마 중복 1건 제외)이며 그 SHA-256 이 raw_manifest.json 에 있다.</p>")
-        secs.append(f"<h2>판</h2><p>{VERSION} ({BUILD_DATE}) — 첫 공개.</p>")
+        secs.append(f"<h2>판</h2><ul><li>{VERSION} ({BUILD_DATE}) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
     else:
         secs.append(f"<h1>Method and limits</h1><h2>Sources</h2><p>{esc(SOURCES['itkc_munjip']['en'])}</p><p>{esc(SOURCES['aks_munkwa']['en'])} {esc(SOURCES['aks_persons']['en'])}</p>")
         secs.append(f"<h2>Unit of counting</h2><p>Every number is counted per <b>work</b>: one level element of type=\"최종정보\" in the ITKC XML. Of {int(D.col.n_works.sum()):,} works, {int(D.col.n_own_works.sum()):,} are by the collection's author (writer name equals the bibliographic author). Characters are CJK code points inside <내용>; those inside original, collation and marginal notes are counted separately as note characters. Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references.</p>")
@@ -577,8 +597,8 @@ def method_page(D, lang):
         secs.append("<h2>Relationship genres</h2><p>A letter's addressee is the string after an opening 答·與·上·寄·復·報·奉·呈·贈·簡·謝 up to 書·簡·問目·別紙·狀 etc.; an epitaph's subject is the string before 墓誌銘·墓碣銘·神道碑·行狀 etc. with honorific prefixes removed. Version 1.0 does not merge strings into persons: the same person named by courtesy name, pen name or office counts as different addressees. Parsing precision is measured on a sample.</p>")
         secs.append("<h2>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>The 8 authors without a birth year (841 works, 709 own) appear as a separate 'birth year unknown' row in the series A and B century tables and are absent from the series C and D century tables (whose sums cover dated authors only); the headline totals (1,248 authors, 637,203 works, 609,494 own works) include them.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
         secs.append("<h2>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). The portal lists 1,251 entries; 1,250 attachments were downloaded (one entry has none) and 1,249 archives adopted (one old-schema duplicate excluded); their SHA-256 digests are in raw_manifest.json.</p>")
-        secs.append(f"<h2>Versions</h2><p>{VERSION} ({BUILD_DATE}) — first release.</p>")
-    return page(lang, t["nav_method"], "".join(secs), depth=1, active="method")
+        secs.append(f"<h2>Versions</h2><ul><li>{VERSION} ({BUILD_DATE}) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
+    return page(lang, t["nav_method"], "".join(secs), depth=1, active="method", rel="method.html")
 
 
 def reading_page(D, lang):
@@ -589,7 +609,7 @@ def reading_page(D, lang):
         for m in METRICS:
             if m["series"] == s and m["id"] in TAKE:
                 body.append(f'<h3><a href="metrics/{m["id"]}.html">{esc(m[lang]["name"])}</a></h3><p>{esc(TAKE[m["id"]][lang])}</p>')
-    return page(lang, t["nav_reading"], "".join(body), depth=1, active="reading")
+    return page(lang, t["nav_reading"], "".join(body), depth=1, active="reading", rel="reading.html")
 
 
 def write_datapackage(data_dir: Path, files, D) -> None:
@@ -601,7 +621,7 @@ def write_datapackage(data_dir: Path, files, D) -> None:
         res.append({"name": f.replace(".csv.gz", "").replace(".csv", "").replace(".json", ""), "path": f, "format": "csv" if ".csv" in f else "json",
                     "licenses": [{"name": "CC-BY-4.0", "title": "Creative Commons Attribution 4.0 (this site's derived tables)"}], "sources": [{"title": SOURCES[k]["en"], "path": SOURCES[k]["url"], "license": SOURCES[k]["license"]} for k in src.split("; ")]})
     pkg = {"name": "munjip-metrics", "title": SITE["en"]["title"], "version": VERSION, "created": BUILD_DATE, "homepage": REPO,
-           "description": "Korean literary collections (Hanguk munjip chonggan, 1,251 collections) counted work by work: sizes, genre composition, relationship genres, authors. No text is included; works link to the ITKC database.",
+           "description": f"Korean literary collections (Hanguk munjip chonggan, {len(D.col):,} collections) counted work by work: sizes, genre composition, relationship genres, authors. No text is included; works link to the ITKC database.",
            "licenses": [{"name": "CC-BY-4.0"}], "resources": res}
     (data_dir / "datapackage.json").write_text(json.dumps(pkg, ensure_ascii=False, indent=1), encoding="utf-8")
 
