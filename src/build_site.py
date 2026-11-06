@@ -26,7 +26,7 @@ except ImportError:  # before the takeaways are written
     TAKE, HOME_FIVE, PAGE_TAKE = {}, {"ko": [], "en": []}, {}
 
 VERSION = SITE["version"]
-BUILD_DATE = "2026-11-04"
+BUILD_DATE = "2026-11-07"
 REPO = "https://github.com/BowonKwon/Munjip-Metrics"
 ITKC = "https://db.itkc.or.kr/dir/node?dataId="
 GENRES = ["詩類", "書簡類", "序跋類", "傳記類", "公車類", "哀祭類", "雜著類"]
@@ -52,6 +52,69 @@ T = {
                author="author", birth="born", death="died", pub="printed", title="title", genre="genre", recipients="addressees", letters="letters", epitaphs="epitaphs and biographies"),
 }
 sc.T = T
+
+# 1.0.3: navigation on leaf pages (metric pages, person pages) — same helper as Physical Constants / Sillok Metrics
+sc.CSS += ' main.wide{max-width:1300px} .crumbs{font-size:.84rem;color:var(--fg3);margin:-.4rem 0 .9rem} .crumbs .sep{margin:0 .25rem} .crumbs [aria-current]{color:var(--fg2)} .leaf{display:grid;grid-template-columns:220px minmax(0,1fr);gap:2rem;align-items:start} .sibs{position:sticky;top:4.2rem;max-height:calc(100vh - 5rem);overflow:auto;font-size:.84rem;border-right:1px solid var(--line);padding-right:.8rem} .sibs ol,.sibs-m ol{list-style:none;margin:.2rem 0 .8rem;padding:0} .sibs li a,.sibs-m li a{display:block;padding:.18rem .4rem;border-radius:6px;color:var(--fg2)} .sibs li a:hover,.sibs-m li a:hover{background:var(--bg2);text-decoration:none} .sibs a[aria-current],.sibs-m a[aria-current]{background:var(--bg2);color:var(--fg);font-weight:600} .sibs summary,.sibs-m summary{cursor:pointer;font-weight:600;color:var(--fg);margin:.3rem 0} .sibs .sg{font-weight:600;margin:.2rem 0} .sibs-m{display:none;border:1px solid var(--line);border-radius:10px;padding:.4rem .8rem;margin:0 0 1rem;font-size:.9rem} .pn{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:2.4rem;padding-top:1rem;font-size:.92rem} .pn a[rel=next]{margin-left:auto;text-align:right} .pn small{display:block;color:var(--fg3)} @media(max-width:860px){.leaf{display:block}.sibs{display:none}.sibs-m{display:block}} @media print{.crumbs,.sibs,.sibs-m,.pn{display:none}.leaf{display:block}}'
+sc.JS += ';document.addEventListener("keydown",function(e){if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;var t=e.target;if(t&&t.closest&&t.closest("input,textarea,select,[contenteditable]"))return;var a=null;if(e.key==="ArrowLeft")a=document.querySelector("a[rel=prev]");else if(e.key==="ArrowRight")a=document.querySelector("a[rel=next]");if(a){location.href=a.href}});var sb=document.querySelector(".sibs"),cu=sb&&sb.querySelector("a[aria-current]");if(cu){sb.scrollTop=cu.offsetTop-sb.clientHeight/2}'
+
+LEAF_T = {"ko": dict(crumbs="위치", sibs="같은 계열", others="이 계열의 다른 면", pn="이전·다음", prev="이전", next="다음", next_group="다음 계열"),
+          "en": dict(crumbs="Breadcrumb", sibs="In this series", others="Other pages in this series", pn="Previous and next", prev="Previous", next="Next", next_group="Next series")}
+
+
+def leaf_html(lang, leaf, body):
+    """Breadcrumb, same-series list (sidebar on wide screens, collapsed box on narrow ones) and previous/next links.
+    leaf = dict(crumbs=[(label, href)...], groups=[(group label, [(label, href), ...]), ...], cur=href of this page)."""
+    L = LEAF_T[lang]
+    flat = [(lab, href, gi, glab) for gi, (glab, items) in enumerate(leaf["groups"]) for lab, href in items]
+    idx = next(i for i, x in enumerate(flat) if x[1] == leaf["cur"])
+    cur_g = flat[idx][2]
+    crumbs = " <span class='sep' aria-hidden='true'>›</span> ".join(f'<a href="{h}">{esc(l)}</a>' for l, h in leaf["crumbs"])
+    crumbs += f" <span class='sep' aria-hidden='true'>›</span> <span aria-current='page'>{esc(flat[idx][0])}</span>"
+
+    def lists():
+        out = []
+        many = len(leaf["groups"]) > 1
+        for gi, (glab, items) in enumerate(leaf["groups"]):
+            lis = "".join(f'<li><a href="{h}"' + (' aria-current="page"' if h == leaf["cur"] else "") + f'>{esc(l)}</a></li>' for l, h in items)
+            if many:
+                out.append(f'<details{" open" if gi == cur_g else ""}><summary>{esc(glab)} <small>({len(items)})</small></summary><ol>{lis}</ol></details>')
+            else:
+                out.append(f'<p class="sg">{esc(glab)} <small>({len(items)})</small></p><ol>{lis}</ol>')
+        return "".join(out)
+
+    side = f'<aside class="sibs"><nav aria-label="{L["sibs"]}">{lists()}</nav></aside>'
+    mobile = f'<details class="sibs-m"><summary>{L["others"]} ({sum(len(i) for _, i in leaf["groups"])})</summary><nav aria-label="{L["sibs"]}">{lists()}</nav></details>'
+    pn = []
+    if idx > 0:
+        p = flat[idx - 1]
+        pn.append(f'<a rel="prev" href="{p[1]}">← {esc(p[0])}</a>')
+    if idx + 1 < len(flat):
+        n = flat[idx + 1]
+        note = f'<small>{L["next_group"]}: {esc(n[3])}</small> ' if n[2] != cur_g else ""
+        pn.append(f'<a rel="next" href="{n[1]}">{note}{esc(n[0])} →</a>')
+    pnav = f'<nav class="pn" aria-label="{L["pn"]}">{"".join(pn)}</nav>'
+    return (f'<nav class="crumbs" aria-label="{L["crumbs"]}">{crumbs}</nav><div class="leaf">{side}<div class="leafbody">{mobile}'
+            f'{body}{pnav}</div></div>')
+
+
+def metric_leaf(lang, mid):
+    """Siblings of a metric page: every metric, grouped by series in the order of the metric index."""
+    t = T[lang]
+    groups = [(sl[lang], [(m[lang]["name"], f'{m["id"]}.html') for m in METRICS if m["series"] == s]) for s, sl in SERIES.items()]
+    return dict(crumbs=[(t["nav_home"], "../index.html"), (t["nav_metrics"], "index.html")], cur=f"{mid}.html", groups=[g for g in groups if g[1]])
+
+
+def person_leaf(D, lang, cid):
+    """Siblings of a person page: the ten person pages in order of the author's birth year."""
+    t = T[lang]; ko = lang == "ko"
+    rows = []
+    for hj, nko, nen in PERSON_PAGES:
+        rr = D.col[D.col.title_hj == hj]
+        if len(rr):
+            r = rr.iloc[0]
+            rows.append((r.birth if not pd.isna(r.birth) else 9999, f"{nko if ko else nen} ({fmt(r.birth, '.0f')})", f"{r.collection_id}.html"))
+    items = [(lab, href) for _, lab, href in sorted(rows, key=lambda x: x[0])]
+    return dict(crumbs=[(t["nav_home"], "../index.html"), (t["person_list"], "../persons.html")], cur=f"{cid}.html", groups=[(t["person_list"], items)])
 
 
 def century_label(c, lang):
@@ -82,7 +145,9 @@ def _title_hj(D, cid) -> str:
     r = D.col[D.col.collection_id == cid]
     return r.title_hj.iloc[0] if len(r) else cid
 
-def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", active: str = "", rel: str = "index.html") -> str:
+def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", active: str = "", rel: str = "index.html", leaf=None) -> str:
+    if leaf:   # 1.0.3: breadcrumb, same-series list and previous/next on metric and person pages
+        body = leaf_html(lang, leaf, body)
     t = T[lang]
     root = "../" * depth
     other = "en" if lang == "ko" else "ko"
@@ -105,7 +170,7 @@ def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", activ
 <header><a class="brand" href="{root}{lang}/index.html">{t['site']}</a>
 <nav>{navh}</nav>
 <div class="right"><button id="theme" class="theme" type="button" aria-label="theme">◑</button><a class="lang" href="{root}{other}/{rel}">{t['lang_other']}</a></div></header>
-<main>{body}</main>
+<main{' class="wide"' if leaf else ''}>{body}</main>
 <footer>{t['site']} · {t['version']} {VERSION} · {t['built']} {BUILD_DATE} · <a href="{REPO}">GitHub</a> · {t['hub']} <a href="https://bowonkwon.github.io/{hub_path}">bowonkwon.github.io</a><br>{attribution}</footer>
 <script>{sc.JS}</script></body></html>"""
 
@@ -374,7 +439,7 @@ def metric_page(m, D, lang):
     body.append(reliability_card(m, D, lang))
     body.append(metric_figure(m, D, lang))
     body.append(f'<p class="files"><a href="../../data/{m["table"]}.csv">{t["download"]}: {m["table"]}.csv</a></p>')
-    return page(lang, L["name"], "".join(body), depth=2, desc=L["definition"], active="metrics", rel=f"metrics/{m['id']}.html")
+    return page(lang, L["name"], "".join(body), depth=2, desc=L["definition"], active="metrics", rel=f"metrics/{m['id']}.html", leaf=metric_leaf(lang, m["id"]))
 
 
 def metrics_index(D, lang):
@@ -439,7 +504,7 @@ def collection_page(r, D, lang, is_person=False):
                (f"Examination roster: rule {a.munkwa_rule} — passed {fmt(a.exam_year, '.0f')} ({a.exam_name}, clan seat {a.munkwa_bon})" + (f", age {fmt(a.exam_age, '.0f')}" if has_age else "") + "." if a.linked == 1 else "Not linked to the examination roster (no record found, or ambiguous).")
         body.append("<h2>" + cap(t["author"], lang) + f"</h2><p>{esc(link)} " + (f"한국역대인명정보: {a.persons_rule}" + (f", 몰년 일치" if a.death_agrees == 1 else (", 몰년 불일치" if a.death_agrees == 0 else "")) + "." if ko else f"AKS persons: {a.persons_rule}" + (", death year agrees" if a.death_agrees == 1 else (", death year differs" if a.death_agrees == 0 else "")) + ".") + "</p>")
     body.append(f'<p class="links"><a href="{ITKC}{esc(cid)}">{t["itkc_link"]}</a></p>')
-    return page(lang, title, "".join(body), depth=2, active="persons" if is_person else "collections", rel=f"collections/{cid}.html")
+    return page(lang, title, "".join(body), depth=2, active="persons" if is_person else "collections", rel=f"collections/{cid}.html", leaf=person_leaf(D, lang, cid) if is_person else None)
 
 
 def collections_index(D, lang):
@@ -587,7 +652,7 @@ def method_page(D, lang):
         secs.append("<h2>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>생년 없는 저자 8명(841편, 저자 글 709)은 A·B 계열 세기 표에 「생년 미상」 행으로 따로 있고, C·D 계열 세기 표에는 없다(그 표의 합은 생년 있는 저자만). 지표 머리의 전체 값(저자 1,248·편 637,203·저자 글 609,494)에는 들어간다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
         secs.append("<h2>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 포털 파일 이력은 1,251항목, 내려받은 첨부는 1,250건(운암집 1건은 첨부 없음), 채택한 문집 zip 은 1,249건(구 스키마 중복 1건 제외)이며 그 SHA-256 이 raw_manifest.json 에 있다.</p>")
         secs.append("<h2>로마자</h2><p>문집명과 인물 이름은 국어의 로마자 표기법(2000)을 따르되, 성 김·이는 관용 표기 Kim·Yi로 적는다.</p>")
-        secs.append(f"<h2>판</h2><ul><li>{VERSION} ({BUILD_DATE}) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
+        secs.append(f"<h2>판</h2><ul><li>{VERSION} ({BUILD_DATE}) — 탐색 개선: 지표 면과 인물 면에 위치 표시줄, 같은 계열 목록, 이전·다음 링크(←/→ 키)를 넣었다. 지표는 계열 순, 인물 면은 생년 순. 내용·수치 변화 없음.</li><li>1.0.2 (2026-11-04) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
     else:
         secs.append(f"<h1>Method and limits</h1><h2>Sources</h2><p>{esc(SOURCES['itkc_munjip']['en'])}</p><p>{esc(SOURCES['aks_munkwa']['en'])} {esc(SOURCES['aks_persons']['en'])}</p>")
         secs.append(f"<h2>Unit of counting</h2><p>Every number is counted per <b>work</b>: one level element of type=\"최종정보\" in the ITKC XML. Of {int(D.col.n_works.sum()):,} works, {int(D.col.n_own_works.sum()):,} are by the collection's author (writer name equals the bibliographic author). Characters are CJK code points inside <내용>; those inside original, collation and marginal notes are counted separately as note characters. Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references.</p>")
@@ -599,7 +664,7 @@ def method_page(D, lang):
         secs.append("<h2>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>The 8 authors without a birth year (841 works, 709 own) appear as a separate 'birth year unknown' row in the series A and B century tables and are absent from the series C and D century tables (whose sums cover dated authors only); the headline totals (1,248 authors, 637,203 works, 609,494 own works) include them.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
         secs.append("<h2>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). The portal lists 1,251 entries; 1,250 attachments were downloaded (one entry has none) and 1,249 archives adopted (one old-schema duplicate excluded); their SHA-256 digests are in raw_manifest.json.</p>")
         secs.append("<h2>Romanization</h2><p>Collection titles and personal names follow the Revised Romanization of Korean (2000); the surnames 김 and 이 are given in their customary forms, Kim and Yi.</p>")
-        secs.append(f"<h2>Versions</h2><ul><li>{VERSION} ({BUILD_DATE}) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
+        secs.append(f"<h2>Versions</h2><ul><li>{VERSION} ({BUILD_DATE}) — Navigation: metric and person pages now have a breadcrumb, a list of pages in the same series and previous/next links (← and → keys); metrics follow series order, person pages birth order. No content or numbers changed.</li><li>1.0.2 (2026-11-04) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
     return page(lang, t["nav_method"], "".join(secs), depth=1, active="method", rel="method.html")
 
 
