@@ -1,6 +1,6 @@
 # 문집 메트릭스 · Munjip Metrics
 
-한국문집총간 1,249종을 편 단위로 센 수치와, 그 수치를 얼마나 믿어도 되는지.
+한국문집총간 1,249종을 편 단위로 센 수치와, 수치마다 붙인 신뢰도.
 Korean literary collections (Hanguk munjip chonggan) counted work by work, with a reliability card on every number.
 
 **사이트 · Site:** https://bowonkwon.github.io/Munjip-Metrics/ ([한국어](https://bowonkwon.github.io/Munjip-Metrics/ko/) · [English](https://bowonkwon.github.io/Munjip-Metrics/en/))
