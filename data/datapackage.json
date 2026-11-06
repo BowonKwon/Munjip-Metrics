@@ -1,8 +1,8 @@
 {
  "name": "munjip-metrics",
  "title": "Munjip Metrics",
- "version": "1.0.2",
- "created": "2026-11-04",
+ "version": "1.0.3",
+ "created": "2026-11-07",
  "homepage": "https://github.com/BowonKwon/Munjip-Metrics",
  "description": "Korean literary collections (Hanguk munjip chonggan, 1,249 collections) counted work by work: sizes, genre composition, relationship genres, authors. No text is included; works link to the ITKC database.",
  "licenses": [

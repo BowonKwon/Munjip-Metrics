@@ -18,7 +18,7 @@ Fields
 SITE = {
     "ko": {"title": "문집 메트릭스", "subtitle": "한국문집총간 1,249종을 편 단위로 센 수치와, 수치마다 붙인 신뢰도"},
     "en": {"title": "Munjip Metrics", "subtitle": "Korean literary collections (Hanguk munjip chonggan) counted work by work, with a reliability card on every number"},
-    "version": "1.0.2",
+    "version": "1.0.3",
 }
 
 SERIES = {
