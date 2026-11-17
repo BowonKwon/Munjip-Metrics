@@ -63,4 +63,10 @@ python src/build_site.py                                 # -> site/
 
 ## 인용 · Citation
 
-Kwon, Bowon (2026). Munjip Metrics 1.0.5. https://bowonkwon.github.io/Munjip-Metrics/
+Kwon, Bowon (2026). Munjip Metrics 1.0.6. https://bowonkwon.github.io/Munjip-Metrics/
+
+## 일러두기 · Note
+
+이 저장소의 자료는 엮은이가 개인적으로 공부하며 엮은 것입니다. 엮은이가 속한 기관의 견해나 업무와는 관계가 없습니다.
+
+These are personal study materials and do not represent the views or work of any institution the editor belongs to.

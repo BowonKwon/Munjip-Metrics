@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 import site_common as sc
+from rel_gloss import add_gloss, GLOSS_CSS  # 1.0.6: plain-language notes for the words of the reliability cards (same file as Sillok Metrics)
 from site_common import esc, fmt, fig, svg_bars, svg_lines, legend, table_html, cap, take_block, blurb
 from registry import METRICS, PRIOR, SERIES, SERIES_INTRO, SITE, SOURCES, PERSON_PAGES
 try:
@@ -27,7 +28,7 @@ except ImportError:  # before the takeaways are written
     TAKE, HOME_FIVE, PAGE_TAKE = {}, {"ko": [], "en": []}, {}
 
 VERSION = SITE["version"]
-BUILD_DATE = "2026-11-15"
+BUILD_DATE = "2026-11-17"
 REPO = "https://github.com/BowonKwon/Munjip-Metrics"
 ITKC = "https://db.itkc.or.kr/dir/node?dataId="
 GENRES = ["詩類", "書簡類", "序跋類", "傳記類", "公車類", "哀祭類", "雜著類"]
@@ -59,6 +60,91 @@ LINE_Y = {
     "d3_pub_lag": [("몰년에서 간행까지(년)", "years from death to printing")],
     "d4_translation": [("번역문 연계 편의 비율", "share of works linked to a translation")], "d5_punct": [("교감표점 연계 편의 비율", "share of works linked to a collated and punctuated edition")],
 }
+
+
+
+def svg_panels(series, spec, ylabel="", xlabel="", width=900, height=300) -> str:
+    """1.0.6: one small chart per series, side by side on one vertical scale (b1, b3, b4, b6). The three lines of these
+    metrics cross from century to century, and a reader of the single chart could not tell them apart by the names at the
+    line ends. Each panel names its series above it; the scale is shared, so heights compare across panels. Breaks, lone
+    points and tooltips follow svg_lines exactly, so the hover values are the same as before."""
+    series = [(sc.cap(n, "en"), pts, ci) for n, pts, ci in series]
+    ylabel = sc.cap(ylabel, "en")
+    xs = [p[0] for _, pts, _ in series for p in pts]
+    ys = [p[1] for _, pts, _ in series for p in pts if not math.isnan(p[1])]
+    if not xs or not ys:
+        return ""
+    x0, x1, y0, y1 = min(xs), max(xs), 0.0, max(ys) * 1.05 or 1
+    k = len(series); L, gap, R, Tp, B = 50, 22, 8, 46, (52 if xlabel else 36)
+    pw = (width - R - k * L - (k - 1) * gap) / k; ph = height - Tp - B
+    Y = lambda v: Tp + ph - (v - y0) / (y1 - y0) * ph
+    ticks = sc.nice_ticks(y0, y1); tspec = sc.tick_spec(".0%" if spec.endswith("%") else spec, ticks)   # whole percents on the axis; hover keeps spec
+    out = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="small multiple line charts">']
+    if ylabel:
+        out.append(f'<text x="{L}" y="13">{esc(ylabel)}</text>')
+    for i, (name, pts, ci) in enumerate(series):
+        left = i * (L + pw + gap) + L
+        X = lambda v, left=left: left + (v - x0) / (x1 - x0 or 1) * pw
+        out.append(f'<text x="{left + pw / 2:.1f}" y="34" text-anchor="middle" font-weight="600" fill="var(--s{ci+1})">{esc(name)}</text>')
+        for v in ticks:
+            out.append(f'<line class="grid" x1="{left}" y1="{Y(v):.1f}" x2="{left + pw:.1f}" y2="{Y(v):.1f}"/><text x="{left - 5}" y="{Y(v)+4:.1f}" text-anchor="end">{fmt(v, tspec)}</text>')
+        step = 1   # every century, as on the single chart (labels are two digits, about 22 units apart)
+        xv = int(math.ceil(x0 / step) * step)
+        while xv <= x1:
+            out.append(f'<text x="{X(xv):.1f}" y="{Tp + ph + 20:.1f}" text-anchor="middle">{xv}</text>')
+            xv += step
+        allx = sorted(p[0] for p in pts)
+        steps = [b - a for a, b in zip(allx, allx[1:]) if b > a]
+        base = min(steps) if steps else 0
+        segs, cur, prev = [], [], None
+        for x, y in pts:
+            if math.isnan(y):
+                if cur:
+                    segs.append(cur)
+                cur, prev = [], None
+                continue
+            if cur and base and x - prev > base * 1.5:
+                segs.append(cur)
+                cur = []
+            cur.append((x, y))
+            prev = x
+        if cur:
+            segs.append(cur)
+        pts = [p for seg in segs for p in seg]
+        if not pts:
+            continue
+        d = " ".join(f"{'M' if j == 0 else 'L'}{X(x):.1f},{Y(y):.1f}" for seg in segs for j, (x, y) in enumerate(seg))
+        out.append(f'<path d="{d}" fill="none" stroke="var(--s{ci+1})" stroke-width="1.8" stroke-linejoin="round"/>')
+        for seg in segs:
+            if len(seg) == 1:
+                out.append(f'<circle cx="{X(seg[0][0]):.1f}" cy="{Y(seg[0][1]):.1f}" r="2.6" fill="var(--s{ci+1})"/>')
+        for x, y in pts:
+            out.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4" fill="transparent"><title>{esc(name)} · {x}: {fmt(y, spec)}</title></circle>')
+    if xlabel:
+        out.append(f'<text x="{width / 2:.1f}" y="{height - 8}" text-anchor="middle">{esc(xlabel)}</text>')
+    out.append("</svg>")
+    return "".join(out)
+
+
+
+def genre_sample_note(lang) -> str:
+    """1.0.6: what the 300-work classification sample actually holds. The sampler took up to 6 works per (class × century)
+    cell in sorted order and cut the list at 300, so the later classes were never reached. Counted from the published
+    coding file, not assumed."""
+    p = Path(__file__).resolve().parent.parent / "data" / "coding" / "genre_sample.csv"
+    if not p.exists():
+        return ""
+    n = pd.read_csv(p).genre1.value_counts()
+    thin = [(g, int(n.get(g, 0))) for g in GENRES if n.get(g, 0) < 20]
+    if not thin:
+        return ""
+    if lang == "ko":
+        parts = ", ".join(f"{GENRE_KO[g]} {k}편" for g, k in thin)
+        return (f" 표본은 대분류 × 세기 칸마다 6편까지 뽑으려 했으나, 추출 코드가 칸을 차례로 채우다 300편에서 끊어 뒤쪽 갈래가 거의 들지 못했다({parts}). "
+                f"이 비율은 조사한 300편의 결과이며, 시·잡저 전체의 분류 품질을 추정하는 근거로 쓸 수 없다. 표본 구성과 누락 때문에 전체 저자 글의 분류 품질로 일반화하는 데에도 한계가 있다.")
+    parts = ", ".join(f"{GENRE_EN[g]} {k}" for g, k in thin)
+    return (f" The sampler meant to take up to six works per class × century cell, but it filled the cells in order and stopped at 300, so the later classes were barely reached ({parts}). "
+            f"The rate is the result for the 300 works examined and cannot be used to estimate classification quality across poetry or miscellany; the make-up of the sample and its gaps also limit any generalization to all own works.")
 
 
 def century_note(D, lang) -> str:
@@ -252,6 +338,7 @@ def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", activ
     if leaf:   # 1.0.3: breadcrumb, same-series list and previous/next on metric and person pages
         body = leaf_html(lang, leaf, body)
     body = wrap_wide_svgs(body)
+    body = add_gloss(body, lang, "end" if active in ("method", "reading") else "card")   # 1.0.6
     t = T[lang]
     root = "../" * depth
     other = "en" if lang == "ko" else "ko"
@@ -270,7 +357,7 @@ def page(lang: str, title: str, body: str, depth: int = 1, desc: str = "", activ
 <script>(function(){{var q=new URLSearchParams(location.search).get("theme");if(q==="light"||q==="dark"){{localStorage.setItem("mjm-theme",q)}}else if(q==="auto"){{localStorage.removeItem("mjm-theme")}}var v=localStorage.getItem("mjm-theme");if(v)document.documentElement.setAttribute("data-theme",v)}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet">
-<style>{sc.CSS}</style></head><body>
+<style>{sc.CSS}{GLOSS_CSS}</style></head><body>
 <header><a class="brand" href="{root}{lang}/index.html">{t['site']}</a>
 <nav>{navh}</nav>
 <div class="right"><a class="hub" href="https://bowonkwon.github.io/{'' if lang == 'ko' else 'en/'}">{'공개 자료 허브' if lang == 'ko' else 'All public materials'}</a><button id="theme" class="theme" type="button" aria-label="theme">◑</button><a class="lang" href="{root}{other}/{rel}">{t['lang_other']}</a></div></header>
@@ -394,8 +481,8 @@ def reliability_card(m, D: Data, lang) -> str:
                              f"Of the {len(agree):,} authors matched to the AKS person database (P1 by name and birth year, {int((a.persons_rule == 'P1').sum()):,}; P2 by name and pen name, {int((a.persons_rule == 'P2').sum()):,}) whose death year can be compared, {int(agree.sum()):,} ({agree.mean():.1%}) agree.") + "</p>")
     g = D.precision.get("genre"); blk = D.precision.get("genre_block_note")
     if m["series"] == "B" and g:
-        body.append("<p>" + (f"분류 품질: 저자 글 층화 표본 {g['n']}편(대분류 × 세기)을 제목으로 블라인드 코딩한 결과 고전번역원 대분류와 일치 {g['precision']:.1%} (윌슨 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; 판단 유보 {g['undecided']}건은 불일치로 셈" + (f"; 그중 {D.precision['genre_recode']['n']}편을 다른 코더가 블라인드로 다시 코딩해 일치 {D.precision['genre_recode']['agreement']:.0%}" if D.precision.get('genre_recode') else "") + ")." if ko else
-                             f"Classification quality: a stratified sample of {g['n']} own works (major class × century) was blind-coded from titles; {g['precision']:.1%} agree with the ITKC major class (Wilson 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; {g['undecided']} undecided counted as disagreement" + (f"; a second coder re-coded {D.precision['genre_recode']['n']} of them blind with {D.precision['genre_recode']['agreement']:.0%} agreement" if D.precision.get('genre_recode') else "") + ").") +
+        body.append("<p>" + (f"분류 품질: 저자 글 표본 {g['n']}편의 제목을 보고 고전번역원 대분류가 맞는지 판정한 결과 맞다 {g['precision']:.1%} (윌슨 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; 판단 유보 {g['undecided']}건은 불일치로 셈" + (f"; 그중 {D.precision['genre_recode']['n']}편을 다른 코더가 앞 판정을 보지 않고(블라인드) 다시 판정해 일치 {D.precision['genre_recode']['agreement']:.0%}" if D.precision.get('genre_recode') else "") + ")." if ko else
+                             f"Classification quality: a sample of {g['n']} own works was judged from titles for whether the ITKC major class fits; {g['precision']:.1%} fit (Wilson 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; {g['undecided']} undecided counted as disagreement" + (f"; a second coder re-judged {D.precision['genre_recode']['n']} of them blind (without the first judgments) with {D.precision['genre_recode']['agreement']:.0%} agreement" if D.precision.get('genre_recode') else "") + ").") + genre_sample_note(lang) +
                     ((f" 알려진 덩어리 오류: 『{blk['title_ko']}』({blk['collection_id']})의 冊文類 {blk['n_works']:,}편은 제목이 시다 — 고전번역원 분류대로 두고 여기 적는다." if ko else f" Known block error: {blk['n_works']:,} works of {_title_hj(D, blk['collection_id'])} ({blk['collection_id']}) filed as 冊文類 carry poem titles; they are left as classified and noted here.") if blk else "") + "</p>")
     key = {"c1_recipients": "recipients", "c2_epitaph_subjects": "epitaphs"}.get(mid)
     p = D.precision.get(key) if key else None
@@ -469,8 +556,10 @@ def metric_figure(m, D: Data, lang) -> str:
     elif mid in ("b1_poetry_share", "b3_letters_share", "b4_memorials_share", "b6_prefaces_share"):
         g = {"b1_poetry_share": "詩類", "b3_letters_share": "書簡類", "b4_memorials_share": "公車類", "b6_prefaces_share": "序跋類"}[mid]
         b = D.b[D.b.genre1 == g]; ba = D.b_all[D.b_all.genre1 == g]
-        out.append(fig(lines([cen_series(b, "share_works", lang, ("편 기준" if ko else "by works"), 0), cen_series(b, "share_chars", lang, ("글자 기준" if ko else "by characters"), 1), cen_series(ba, "share_works", lang, ("편 기준, 타인 글 포함" if ko else "by works, incl. others"), 2)], ".1%", xstep=1), (f"{GENRE_KO[g]} 비중, 저자 생년 세기별. 선은 셋이다. 「편 기준」은 저자 글의 편 수로, 「글자 기준」은 저자 글의 글자 수로 센 비율이고, 「편 기준, 타인 글 포함」은 문집에 함께 실린 다른 사람의 글까지 넣어 편 수로 센 비율이다. 위에 있을수록 그 갈래의 몫이 크다." if ko
-               else f"Share of {GENRE_EN[g]} by the author's birth century. Three lines: 'by works' counts the author's own works, 'by characters' counts their characters, and 'by works, incl. others' also counts the works by other writers printed in the collection. Higher = a larger share for this class.")))
+        yl = next(ynames, ("", ""))   # 1.0.6: three small charts on one scale instead of three crossing lines
+        out.append(fig(svg_panels([cen_series(b, "share_works", lang, ("편 기준" if ko else "by works"), 0), cen_series(b, "share_chars", lang, ("글자 기준" if ko else "by characters"), 1), cen_series(ba, "share_works", lang, ("편 기준, 타인 글 포함" if ko else "by works, incl. others"), 2)], ".1%", ylabel=yl[0 if ko else 1], xlabel=X_CENTURY[lang]),
+                       (f"{GENRE_KO[g]} 비중, 저자 생년 세기별. 같은 비중을 세 가지 방식으로 센 그림 셋이고, 세 그림의 세로 눈금이 같다. 왼쪽 「편 기준」은 저자 글의 편 수로, 가운데 「글자 기준」은 저자 글의 글자 수로 센 비율이고, 오른쪽 「편 기준, 타인 글 포함」은 문집에 함께 실린 다른 사람의 글까지 넣어 편 수로 센 비율이다. 위에 있을수록 그 갈래의 몫이 크다." if ko
+               else f"Share of {GENRE_EN[g]} by the author's birth century, counted three ways in three small charts on the same vertical scale. Left, 'by works' counts the author's own works; middle, 'by characters' counts their characters; right, 'by works, incl. others' also counts the works by other writers printed in the collection. Higher = a larger share for this class.")))
         bc = D.b_col.copy(); colname = f"share_works_{g}"
         bc = bc.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
         # Ties at the top are ordered by the number of own works, largest first, so the thirty shown are not an arbitrary draw
@@ -790,7 +879,7 @@ def method_page(D, lang):
     if ko:
         secs.append(f"<h1>방법·한계</h1><h2>자료</h2><p>{esc(SOURCES['itkc_munjip']['ko'])}</p><p>{esc(SOURCES['aks_munkwa']['ko'])} {esc(SOURCES['aks_persons']['ko'])}</p>")
         secs.append(f"<h2>세는 단위</h2><p>모든 수는 <b>편</b> 단위다. 고전번역원 XML 에서 type=\"최종정보\" 인 레벨 요소 하나가 편 하나이고, 전체 {int(D.col.n_works.sum()):,}편 가운데 {int(D.col.n_own_works.sum()):,}편이 저자 자신의 글이다(필자 한자성명 = 서지 저자). 글자는 <내용> 안의 한자 수이며 원주·교감주·난외주 안의 글자를 주로 따로 센다. 검산: 문집 {n_match}종 전부에서 원본 XML 의 <내용> 재계산과 일치, 문자 참조 잔존 0.</p>")
-        secs.append("<h2>문체</h2><p>고전번역원이 편마다 붙인 문체분류(대분류 7·중분류 28)를 그대로 쓴다. 사이트가 분류를 고치거나 보태지 않았다. 분류의 품질은 기타류 잔여율(B7)로 보이고, 표본 300편을 제목·본문으로 블라인드 코딩한 일치율을 신뢰도 카드에 적는다(1.0 에서 진행 중이면 그렇게 표시).</p>")
+        secs.append("<h2>문체</h2><p>고전번역원이 편마다 붙인 문체분류(대분류 7·중분류 28)를 그대로 쓴다. 사이트가 분류를 고치거나 보태지 않았다. 분류의 품질은 기타류 잔여율(B7)로 보이고, 표본 300편의 제목(필요하면 본문 첫머리)을 보고 그 분류가 맞는지 판정한 비율을 신뢰도 카드에 적는다(이 비율은 조사한 300편의 결과로, 시 · 잡저 전체의 분류 품질을 추정하는 근거로 쓸 수 없다 — 표본 구성의 한계는 카드에)(1.0 에서 진행 중이면 그렇게 표시).</p>")
         secs.append("<h2>세기</h2><p>XML 에 편 단위 연대가 없어 모든 시계열은 저자 생년의 세기로 묶는다. 저자 활동기와 간행 사이에는 약 1세기의 시차가 있다(곽지은 2026; 간행 시차 D3). 생년이 없는 저자의 문집은 세기 표에서 「생년 미상」 행에 둔다.</p>")
         secs.append("<h2>저자 묶기</h2><p>저자 ID 는 한자성명 + 생년이다. 같은 저자의 여러 문집(본집·속집·유고)은 저자 표에서 합산하고 문집 수를 열로 보인다. 필자가 저자와 다른 편(서문·발문·행장·만사·부록)은 저자 저작량에서 뺀다. 같은 이름·같은 생년의 다른 사람은 구별하지 못한다 — 발견되면 overrides 로 고친다.</p>")
         secs.append("<h2>인물 연결</h2><p>문과방목 연결 규칙은 M1 성명+생년 일치(중시·발영시로 여러 행이면 첫 급제), M2 성명 일치·방목 생년 없음·자 또는 호 일치, M3 성명 일치·후보 하나·시험년이 생애 안. 둘 이상 남으면 미확정(AMB)으로 두고 연결하지 않는다. 연결률은 급제율이 아니다. 한국역대인명정보는 성명+생년(P1) 또는 성명+호(P2)로 연결해 몰년 일치율만 본다.</p>")
@@ -798,11 +887,11 @@ def method_page(D, lang):
         secs.append("<h2>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>생년 없는 저자 8명(841편, 저자 글 709)은 A·B 계열 세기 표에 「생년 미상」 행으로 따로 있고, C·D 계열 세기 표에는 없다(그 표의 합은 생년 있는 저자만). 지표 머리의 전체 값(저자 1,248·편 637,203·저자 글 609,494)에는 들어간다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
         secs.append("<h2>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 포털 파일 이력은 1,251항목, 내려받은 첨부는 1,250건(운암집 1건은 첨부 없음), 채택한 문집 zip 은 1,249건(구 스키마 중복 1건 제외)이며 그 SHA-256 이 raw_manifest.json 에 있다.</p>")
         secs.append("<h2>로마자</h2><p>문집명과 인물 이름은 국어의 로마자 표기법(2000)을 따르되, 성 김·이는 관용 표기 Kim·Yi로 적는다.</p>")
-        secs.append(f"<h2>판</h2><ul><li>1.0.5 (2026-11-15) — 그래프 설명을 보강했다. 세기별 선 그림에 두 축의 이름을 적고, 읽는 법(점 하나가 무엇인지, 선이 끊긴 세기, 문집이 적은 세기)을 그림 앞에 두었다. 사분위 선의 이름을 풀어 썼다. 문집 면과 세기 면 머리에 그 면의 값으로 채운 한 문장을 두고, 문체 구성 그림에 결론 한 줄과 일곱 갈래의 풀이를 붙였다(세기 면의 그림에는 캡션이 없었다). 뜻 없이 갈래마다 달랐던 막대 색을 한 가지로 했다. 비율 상위 30 그림에는 거기 실린 문집의 크기를 적었다. 좁은 화면에서는 넓은 그림을 줄이지 않고 옆으로 넘겨 본다. 표의 값과 데이터 파일은 바뀌지 않았다.</li><li>1.0.4 (2026-11-15) — 그림을 고쳤다. 세기별 선 그래프가 문집이 없는 10 · 11세기를 이어 그리던 것을 끊고, 9세기처럼 홀로 남은 값은 점으로 그린다. 시 비중 상위 30 막대는 비중이 100%인 문집이 30종보다 많아 그 가운데 30종이 파일 순서로 그려지고 있었다 — 저자 글이 많은 순으로 그리고 그 수를 설명에 적었다. 선 끝의 계열 이름을 띄우고 긴 이름이 잘리지 않게 여백을 넓혔다. 표의 값은 바뀌지 않았다.</li><li>1.0.3 (2026-11-07) — 탐색 개선: 지표 면과 인물 면에 위치 표시줄, 같은 계열 목록, 이전·다음 링크(←/→ 키)를 넣었다. 지표는 계열 순, 인물 면은 생년 순. 내용·수치 변화 없음.</li><li>1.0.2 (2026-11-04) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
+        secs.append(f"<h2>판</h2><ul><li>1.0.6 (2026-11-17) — 시 · 서간 · 공거 · 서발 비중의 세기별 그림을, 세기마다 엇갈리던 선 셋 대신 같은 세로 눈금의 작은 그림 셋(편 기준 · 글자 기준 · 타인 글 포함)으로 바꿨다. 값과 마우스를 올리면 보이는 수는 그대로다. 지표 면에 코딩 · 블라인드 · 95% 구간 · 윌슨 · 정밀도 · 재현율 · 층화 표본 · 파싱 · HHI 가 나오면 신뢰도 카드 끝에 그 낱말의 짧은 풀이를, 방법 면과 읽기용 판 끝에 낱말 풀이 절을 두었다(실록 메트릭스와 같은 문안). 문체 분류 품질의 설명을 바로잡았다 — 코더는 고전번역원 분류를 보고 그것이 제목과 맞는지 판정했으므로 「블라인드 코딩」이 아니었다(블라인드는 30편 재판정에만 해당). 그 300편 표본은 추출 코드가 칸을 차례로 채우다 300편에서 끊는 바람에 시 · 잡저가 거의 들지 못했다는 것을 카드에 적었다(대분류 × 세기 「층화 표본」이라는 말도 뺐다). 표의 값과 데이터 값은 바뀌지 않았다.</li><li>1.0.5 (2026-11-15) — 그래프 설명을 보강했다. 세기별 선 그림에 두 축의 이름을 적고, 읽는 법(점 하나가 무엇인지, 선이 끊긴 세기, 문집이 적은 세기)을 그림 앞에 두었다. 사분위 선의 이름을 풀어 썼다. 문집 면과 세기 면 머리에 그 면의 값으로 채운 한 문장을 두고, 문체 구성 그림에 결론 한 줄과 일곱 갈래의 풀이를 붙였다(세기 면의 그림에는 캡션이 없었다). 뜻 없이 갈래마다 달랐던 막대 색을 한 가지로 했다. 비율 상위 30 그림에는 거기 실린 문집의 크기를 적었다. 좁은 화면에서는 넓은 그림을 줄이지 않고 옆으로 넘겨 본다. 표의 값과 데이터 파일은 바뀌지 않았다.</li><li>1.0.4 (2026-11-15) — 그림을 고쳤다. 세기별 선 그래프가 문집이 없는 10 · 11세기를 이어 그리던 것을 끊고, 9세기처럼 홀로 남은 값은 점으로 그린다. 시 비중 상위 30 막대는 비중이 100%인 문집이 30종보다 많아 그 가운데 30종이 파일 순서로 그려지고 있었다 — 저자 글이 많은 순으로 그리고 그 수를 설명에 적었다. 선 끝의 계열 이름을 띄우고 긴 이름이 잘리지 않게 여백을 넓혔다. 표의 값은 바뀌지 않았다.</li><li>1.0.3 (2026-11-07) — 탐색 개선: 지표 면과 인물 면에 위치 표시줄, 같은 계열 목록, 이전·다음 링크(←/→ 키)를 넣었다. 지표는 계열 순, 인물 면은 생년 순. 내용·수치 변화 없음.</li><li>1.0.2 (2026-11-04) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
     else:
         secs.append(f"<h1>Method and limits</h1><h2>Sources</h2><p>{esc(SOURCES['itkc_munjip']['en'])}</p><p>{esc(SOURCES['aks_munkwa']['en'])} {esc(SOURCES['aks_persons']['en'])}</p>")
         secs.append(f"<h2>Unit of counting</h2><p>Every number is counted per <b>work</b>: one level element of type=\"최종정보\" in the ITKC XML. Of {int(D.col.n_works.sum()):,} works, {int(D.col.n_own_works.sum()):,} are by the collection's author (writer name equals the bibliographic author). Characters are CJK code points inside <내용>; those inside original, collation and marginal notes are counted separately as note characters. Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references.</p>")
-        secs.append("<h2>Genres</h2><p>The genre classification the ITKC attached to each work (7 major, 28 minor classes) is used as given; nothing was corrected or added. Classification quality is shown by the residual 'other' share (B7) and by a blind coding of a 300-work sample reported on the reliability card (marked as in progress where not yet done in 1.0).</p>")
+        secs.append("<h2>Genres</h2><p>The genre classification the ITKC attached to each work (7 major, 28 minor classes) is used as given; nothing was corrected or added. Classification quality is shown by the residual 'other' share (B7) and by the share of a 300-work sample judged, from the title (and the opening of the text where needed), to fit its class, reported on the reliability card (the rate is the result for the 300 works examined and cannot be used to estimate classification quality across poetry or miscellany; the sample's limits are on the card) (marked as in progress where not yet done in 1.0).</p>")
         secs.append("<h2>Centuries</h2><p>The XML carries no date per work, so every time series is grouped by the author's birth century. Printing lags the author's active years by about a century (Kwak 2026; publication lag D3). Collections whose author has no birth year sit in a 'birth year unknown' row.</p>")
         secs.append("<h2>Merging authors</h2><p>The author id is the Chinese-character name plus the birth year. Several collections by one author (main collection, continuation, posthumous works) are summed in the author table with the number of collections shown. Works whose writer differs from the author (prefaces, postscripts, biographies, elegies, appendices) are excluded from the author's output. Two different people sharing a name and birth year cannot be told apart; such cases are corrected through overrides when found.</p>")
         secs.append("<h2>Person linkage</h2><p>Examination-roster rules: M1 same name and birth year (first pass when a person is listed for re-examinations), M2 same name, roster birth absent, courtesy or pen name identical, M3 same name, a single candidate, examination year within the lifetime. Where more than one candidate survives the author stays unlinked (AMB). Linkage is not a pass rate. The AKS person database is matched by name and birth year (P1) or name and pen name (P2) and used only to check death years.</p>")
@@ -810,7 +899,7 @@ def method_page(D, lang):
         secs.append("<h2>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>The 8 authors without a birth year (841 works, 709 own) appear as a separate 'birth year unknown' row in the series A and B century tables and are absent from the series C and D century tables (whose sums cover dated authors only); the headline totals (1,248 authors, 637,203 works, 609,494 own works) include them.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
         secs.append("<h2>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). The portal lists 1,251 entries; 1,250 attachments were downloaded (one entry has none) and 1,249 archives adopted (one old-schema duplicate excluded); their SHA-256 digests are in raw_manifest.json.</p>")
         secs.append("<h2>Romanization</h2><p>Collection titles and personal names follow the Revised Romanization of Korean (2000); the surnames 김 and 이 are given in their customary forms, Kim and Yi.</p>")
-        secs.append(f"<h2>Versions</h2><ul><li>1.0.5 (2026-11-15) — Chart explanations filled in. The by-century line charts name both axes, and a note before the charts says what a point is, at which centuries the line breaks and which centuries have few collections. The quartile lines are named in words. Collection pages and century pages open with a sentence filled with that page's values, and the genre-mix chart carries a one-line conclusion and a gloss of the seven classes (the chart on the century pages had no caption). The bar colors, which differed by class without meaning, are now one color. Top-30 charts of a share say how large the collections shown are. On narrow screens wide charts scroll sideways instead of shrinking. No table value or data file changed.</li><li>1.0.4 (2026-11-15) — Figures corrected. The by-century line charts joined points across the 10th and 11th centuries, which have no collection; the lines now stop there, and a value left on its own, such as the 9th century, is drawn as a dot. In the top-30 bars for the poetry share, more than thirty collections have a share of 100% and thirty of them were drawn in file order; they are now ordered by the number of own works, and the caption gives the count. Series names at the line ends are spaced apart, with a wider margin so that long names are not cut off. No value in any table changed.</li><li>1.0.3 (2026-11-07) — Navigation: metric and person pages now have a breadcrumb, a list of pages in the same series and previous/next links (← and → keys); metrics follow series order, person pages birth order. No content or numbers changed.</li><li>1.0.2 (2026-11-04) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
+        secs.append(f"<h2>Versions</h2><ul><li>1.0.6 (2026-11-17) — The by-century charts of the poetry, letters, court-document and preface shares now show three small charts on one vertical scale (by works, by characters, incl. others) instead of three lines that crossed from century to century. The values and the numbers shown on hover are unchanged. Where a metric page uses coding, blind, 95% interval, Wilson, precision, recall, stratified sample, parsing or HHI, a short note on those words ends the card, and the Method page and the reading edition end with a section of the same notes (worded as on Sillok Metrics). The note on genre classification quality is corrected: the coders saw the ITKC class and judged whether it fits the title, so it was not a blind coding (only the 30-work re-judgment was blind). The card now also says that this 300-work sample barely reaches poetry and miscellany, because the sampler filled the class × century cells in order and stopped at 300 (the words 'stratified sample' are dropped). No table value or data value changed.</li><li>1.0.5 (2026-11-15) — Chart explanations filled in. The by-century line charts name both axes, and a note before the charts says what a point is, at which centuries the line breaks and which centuries have few collections. The quartile lines are named in words. Collection pages and century pages open with a sentence filled with that page's values, and the genre-mix chart carries a one-line conclusion and a gloss of the seven classes (the chart on the century pages had no caption). The bar colors, which differed by class without meaning, are now one color. Top-30 charts of a share say how large the collections shown are. On narrow screens wide charts scroll sideways instead of shrinking. No table value or data file changed.</li><li>1.0.4 (2026-11-15) — Figures corrected. The by-century line charts joined points across the 10th and 11th centuries, which have no collection; the lines now stop there, and a value left on its own, such as the 9th century, is drawn as a dot. In the top-30 bars for the poetry share, more than thirty collections have a share of 100% and thirty of them were drawn in file order; they are now ordered by the number of own works, and the caption gives the count. Series names at the line ends are spaced apart, with a wider margin so that long names are not cut off. No value in any table changed.</li><li>1.0.3 (2026-11-07) — Navigation: metric and person pages now have a breadcrumb, a list of pages in the same series and previous/next links (← and → keys); metrics follow series order, person pages birth order. No content or numbers changed.</li><li>1.0.2 (2026-11-04) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
     return page(lang, t["nav_method"], "".join(secs), depth=1, active="method", rel="method.html")
 
 

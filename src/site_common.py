@@ -77,7 +77,7 @@ table.fixed{table-layout:fixed;min-width:900px}table.fixed th{white-space:normal
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:0 .3rem;margin:.6rem 0 1rem}.wrap table{margin:0}
 figure{margin:1.2rem 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem 1rem .8rem;box-shadow:var(--shadow)}
 figcaption{font-size:.86rem;color:var(--fg2);margin-top:.5rem;line-height:1.5}
-svg{max-width:100%;height:auto;display:block}svg text{font-family:var(--body);fill:var(--fg2);font-size:11px}svg .ax{stroke:var(--line)}svg .grid{stroke:var(--grid)}
+svg{max-width:100%;height:auto;display:block}svg text{font-family:var(--body);font-size:11px}svg text:not([fill]){fill:var(--fg2)}svg .ax{stroke:var(--line)}svg .grid{stroke:var(--grid)}
 .legend{display:flex;gap:1.1rem;font-size:.86rem;color:var(--fg2);flex-wrap:wrap;margin:.2rem 0 .4rem}.legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:.4rem;vertical-align:-1px;background:var(--c)}
 .note{background:color-mix(in srgb,var(--accent) 7%,var(--card));border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-left:4px solid var(--accent);border-radius:8px;padding:.7rem 1rem;margin:1.2rem 0;font-size:.95rem}
 .prose p,.prose ul,.prose ol,.prose .note,.prose .lead{max-width:72ch}.prose p{margin:.8rem 0}.prose ul,.prose ol{padding-left:1.2rem}.prose li{margin:.3rem 0}
