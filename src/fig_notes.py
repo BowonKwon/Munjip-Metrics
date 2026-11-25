@@ -30,7 +30,7 @@ def setup(D, century_label, genres, genre_ko, genre_en, genre_gloss):
     ok = sorted(int(c) for c in tot.index if int(c) not in few)
     C.update(gloss=genre_gloss, D=D, cl=century_label, GENRES=genres, GKO=genre_ko, GEN=genre_en, few=few, ok=ok, kmin=11,
              rc=int(tot.n_collections.idxmax()), unknown=int(D.tot.loc[D.tot.index.isna()].n_collections.sum()) if D.tot.index.isna().any() else 0)
-    # 1.0.9 v1 (Codex 3.14, 3.10): works that are not the author's own are works by others *and* works with an empty writer
+    # 1.0.9: works that are not the author's own are works by others *and* works with an empty writer
     # tag; and how far the very long works lift the mean. Both read from works.csv (not public; the same rows as works.csv.gz).
     wp = D.d / "works.csv"
     if wp.exists():
@@ -45,7 +45,7 @@ def setup(D, century_label, genres, genre_ko, genre_en, genre_gloss):
 
 def figx(svg: str, intro: str, parts, lang: str) -> str:
     """A chart with its line above and its labelled paragraphs below. parts: [(key, text)]; empty texts are left out.
-    1.0.9 v1 (Codex 4.3): the chart's accessible name is the line above it, in the page's language (it was 'bar chart')."""
+    1.0.9: the chart's accessible name is the line above it, in the page's language (it was 'bar chart')."""
     if not svg:
         return ""
     if intro:
@@ -78,7 +78,7 @@ def ok_range(lang):
 
 
 def few_text(lang, pts=None, counts=None, unit=("종", "collections")):
-    """The centuries with ten collections or fewer. 1.0.9 v1 (Codex 3.2): only those that have a point on the chart (pts),
+    """The centuries with ten collections or fewer. 1.0.9: only those that have a point on the chart (pts),
     and, where a chart rests on fewer items than the collections (counts: century -> number that enter the value), that number."""
     tot = C["D"].tot
     f = sorted(C["few"])
@@ -125,7 +125,7 @@ def line_short(series, spec, idx, lang, far_ok=True):
             out.append(tr(lang, f"{'「' + name + '」 선은 ' if len(idx) > 1 else '값은 '}모든 세기에서 같다({fmt(hv, spec)}).",
                           f"{'for ' + repr(name) + ' ' if len(idx) > 1 else ''}the value is {fmt(hv, spec)} in every one of them."))
             continue
-        # 1.0.9 v1 (Codex 2.4): other centuries that show the same rounded value as the largest or smallest
+        # 1.0.9: other centuries that show the same rounded value as the largest or smallest
         P = [(int(x), y) for x, y in pts if int(x) not in C["few"] and y == y]
         sh = [x for x, y in P if x not in hs and fmt(y, spec) == fmt(hv, spec)]
         sl = [x for x, y in P if x not in ls and fmt(y, spec) == fmt(lv, spec)]
@@ -145,17 +145,17 @@ def line_short(series, spec, idx, lang, far_ok=True):
                        + f" and the smallest in the {cls(ls, 'en')} ({fmt(lv, spec)})" + (_en_same(sl, lv, False) if sl else "") + ".")
     if not out:
         return ""
-    # 1.0.9 v1 (Codex 4.4): a point of a century with ten collections or fewer that lies beyond these extremes is named too
-    named = len(idx) > 1 or (idx and series[idx[0]][0] in ("중앙값", "median"))   # 1.0.9 v2 (Codex 2.6): b8 · d3 say 'median'
+    # 1.0.9: a point of a century with ten collections or fewer that lies beyond these extremes is named too
+    named = len(idx) > 1 or (idx and series[idx[0]][0] in ("중앙값", "median"))   # 1.0.9: b8 · d3 say 'median'
     tail = far_tail([(series[i][0] if named else None, series[i][1]) for i in (idx if far_ok else [])], spec, lang)   # not for counts
     if lang == "ko":
         return head + " ".join(out) + tail
-    s = head + "; ".join(o.rstrip(".") for o in out) + "."   # 1.0.9 v1: no '.;' between series
+    s = head + "; ".join(o.rstrip(".") for o in out) + "."   # 1.0.9: no '.;' between series
     return s + tail
 
 
 def far_tail(items, spec, lang):
-    """1.0.9 v1 (Codex 4.4), v2 (Codex 2.7, 3.7): the points of centuries with ten collections or fewer that lie beyond the
+    """1.0.9: the points of centuries with ten collections or fewer that lie beyond the
     largest and smallest value of the larger centuries, for each (name, pts) in items; name None leaves the series unnamed.
     Used by the line charts and, with the panel name, by the three small charts."""
     far = []
@@ -175,7 +175,7 @@ def far_tail(items, spec, lang):
             groups[-1][1].append((x, y))
         else:
             groups.append(([n], [(x, y)]))
-    merged = []   # 1.0.9 v3 (Codex 2.6): series with the very same far points are named together
+    merged = []   # 1.0.9: series with the very same far points are named together
     for ns, g in groups:
         if merged and merged[-1][1] == g and None not in ns:
             merged[-1][0].extend(ns)
@@ -210,7 +210,7 @@ def far_tail(items, spec, lang):
 
 
 def qv(v, u_ko, u_en, L):
-    """1.0.9 v3 (Codex 2.13): a median or quartile as computed, with the rounded value the chart shows when they differ."""
+    """1.0.9: a median or quartile as computed, with the rounded value the chart shows when they differ."""
     s = fmt(v, ",.0f")
     if abs(v - round(v)) < 1e-9:
         return s + (u_ko if L == "ko" else u_en)
@@ -219,7 +219,7 @@ def qv(v, u_ko, u_en, L):
 
 
 def round_eg(df, pre, u_ko, u_en, L):
-    """1.0.9 v3 (Codex 2.13): the rounding example of the quartile gloss, taken from this chart's own values."""
+    """1.0.9: the rounding example of the quartile gloss, taken from this chart's own values."""
     names = [("p75", "위 사분위", "upper quartile"), ("p25", "아래 사분위", "lower quartile"), ("median", "중앙값", "median")]
     for _, r in df.sort_values("century").iterrows():
         for suf, nk, ne in names:
@@ -310,7 +310,7 @@ def line_notes(mid, k, series, spec, lang):
     tot = D.tot; t = tot.loc[rc]; rcl = cl(rc, L)
     dc = D.dcen.set_index("century"); d = dc.loc[rc] if rc in dc.index else None
     allpts = [p_ for _, pts_, _ in series for p_ in pts_]
-    one = mis = terms = nums = ""; extra_mis = few_text(L, pts=allpts); bn = birth_not_writing(L)   # 1.0.9 v1: only centuries drawn
+    one = mis = terms = nums = ""; extra_mis = few_text(L, pts=allpts); bn = birth_not_writing(L)   # 1.0.9: only centuries drawn
     idx = [0]
     if mid == "a1_works":
         intro = tr(L, "저자가 태어난 세기마다 문집에 실린 글이 몇 편인지 센 그림이다. 두 선은 전체 편 수와, 그 가운데 저자 자신이 쓴 글(저자 글)의 편 수다.",
@@ -397,7 +397,7 @@ def line_notes(mid, k, series, spec, lang):
         short2 = tr(L, f" 세기 사이 차이가 가장 큰 갈래는 {nm(gw)}{_ro(nm(gw))}, {cl(int(sw.idxmin()), 'ko')} {fmt(sw.min(), '.1%')}에서 {cl(int(sw.idxmax()), 'ko')} {fmt(sw.max(), '.1%')}까지 걸쳐 있다.",
                     f" The class that differs most between centuries is {nm(gw)}, from {fmt(sw.min(), '.1%')} in the {cl(int(sw.idxmin()), 'en')} to {fmt(sw.max(), '.1%')} in the {cl(int(sw.idxmax()), 'en')}.")
         gwp = [(int(c), v) for c, v in D.b[D.b.genre1 == gw].set_index("century").share_works.items() if c == c]
-        short2 += far_tail([(nm(gw), gwp)], ".1%", L)   # 1.0.9 v2 (Codex 2.7)
+        short2 += far_tail([(nm(gw), gwp)], ".1%", L)   # 1.0.9
         r = D.b[(D.b.century == rc) & (D.b.genre1 == "詩類")].iloc[0]
         one = tr(L, f"{rcl}의 시 {fmt(r.share_works, '.1%')}는 그 세기 저자 글 {int(r.total_works):,}편 가운데 {int(r.n_works):,}편이 시라는 뜻이다.",
                  f"The {rcl}'s poetry value {fmt(r.share_works, '.1%')} means {int(r.n_works):,} of the {int(r.total_works):,} own works are poems.")
@@ -468,7 +468,7 @@ def line_notes(mid, k, series, spec, lang):
                  f"The {rcl}'s linkage of {fmt(d.link_rate, '.0%')} means {int(d.n_linked):,} of {int(d.n_authors):,} authors were matched to someone who passed; with name and birth year only, {int(d.n_linked_strict):,} ({fmt(d.link_rate_strict, '.0%')}).")
         mis = tr(L, "연결률은 급제율이 아니다. 급제하지 않은 저자는 연결되지 않는 것이 정상이고, 동명이인이 여럿 남아 정하지 못한 경우(미확정)도 연결로 세지 않았다. ",
                  "Linkage is not a pass rate: authors who never passed are rightly left unlinked, and cases left ambiguous by namesakes are not counted as linked. ") + denoms(D.dcen, "century", "n_authors", "명", "authors", L, people=True)
-        # 1.0.9 v2 (Codex 3.3): say why the two lines coincide when they do
+        # 1.0.9: say why the two lines coincide when they do
         au = D.authors; extra = au[au.munkwa_rule.isin(["M2", "M3"])]; nob = int(extra.birth.isna().sum())
         if (D.dcen.n_linked == D.dcen.n_linked_strict).all():
             mis += tr(L, f" 이 그림에서 두 선은 모든 세기에서 겹친다. (2)·(3)으로 이어진 저자는 {len(extra):,}명이고" + (f" 모두 생년이 없어 어느 세기에도 들지 않기 때문이다." if nob == len(extra) else "다."),
@@ -527,7 +527,7 @@ def panel_notes(g, lang):
              f"Each point is one century. Left to right is the century of the author's birth; up the side is the class's share. Higher means a larger share. Left, 'by works' counts the author's own works; middle, 'by characters' counts their characters; right, 'by works, incl. others' also counts the works by other writers printed in the collection. The three charts share one vertical scale, so heights compare directly. The lines break at centuries with no collection.")
     short = tr(L, f"「편 기준」으로 보면 문집이 {C['kmin']}종 이상인 세기({ok_range('ko')}) 가운데 몫이 가장 큰 세기는 {cls(hs, 'ko')}({fmt(hv, '.1%')}), 가장 작은 세기는 {cls(ls, 'ko')}({fmt(lv, '.1%')})다.",
                f"By works, among the centuries with at least {C['kmin']} collections ({ok_range('en')}), the share is largest in the {cls(hs, 'en')} ({fmt(hv, '.1%')}) and smallest in the {cls(ls, 'en')} ({fmt(lv, '.1%')}).")
-    short += far_tail([(tr(L, "편 기준", "by works"), pts)], ".1%", L)   # 1.0.9 v2 (Codex 2.7): the small centuries of the panel compared
+    short += far_tail([(tr(L, "편 기준", "by works"), pts)], ".1%", L)   # 1.0.9: the small centuries of the panel compared
     one = tr(L, f"{rcl}의 「편 기준」 {fmt(r.share_works, '.1%')}는 저자 글 {int(r.total_works):,}편 가운데 {int(r.n_works):,}편이 {gn}{jo(gn, '이라는', '라는')} 뜻이다. 같은 세기 「글자 기준」은 {fmt(r.share_chars, '.1%')}(글자 {int(r.total_chars):,}자 가운데 {int(r.chars):,}자), 「타인 글 포함」은 {fmt(ra.share_works, '.1%')}(편 {int(ra.total_works):,}편 가운데 {int(ra.n_works):,}편)다.",
              f"The {rcl}'s 'by works' {fmt(r.share_works, '.1%')} means {int(r.n_works):,} of {int(r.total_works):,} own works are {gn}. In the same century 'by characters' is {fmt(r.share_chars, '.1%')} ({int(r.chars):,} of {int(r.total_chars):,} characters) and 'incl. others' {fmt(ra.share_works, '.1%')} ({int(ra.n_works):,} of {int(ra.total_works):,} works).")
     longer = r.share_chars > r.share_works
@@ -550,7 +550,7 @@ def _title(r, lang):
 
 
 def bar_short(items, spec, lang, low=False, allv=None):
-    """1.0.9 v1 (Codex 2.9): ties at the first or the last bar are named, counted over all collections (allv)."""
+    """1.0.9: ties at the first or the last bar are named, counted over all collections (allv)."""
     (n0, v0, _), (nl, vl, _) = items[0], items[-1]
     k = len(items)
     if v0 == vl:   # every bar the same length (top 30 of a share at 100%): the order is explained under Easy to misread
@@ -664,7 +664,7 @@ def top_notes(mid, items, spec, lang, extra_mis="", top_row=None, idx=0, allv=No
         intro = tr(L, "문집에 글을 보탠 저자 아닌 필자(서문·발문·행장·만사를 쓴 사람)의 필자 표지 문자열 가짓수가 가장 많은 문집 30종을 많은 순으로 늘어놓은 그림이다. 사람 수가 아니라 서로 다른 문자열의 수다.",
                    "The 30 collections with the most distinct writer-tag strings of other writers (people who wrote prefaces, postscripts, biographies or elegies in them), largest first; strings, not people.")
         how = bar_how("서로 다른 타인 필자 표지의 수", "the number of distinct writer tags of other writers", L)
-        # 1.0.9 v2 (Codex 2.19): the count is of distinct non-empty writer-tag strings, not of people
+        # 1.0.9: the count is of distinct non-empty writer-tag strings, not of people
         one = tr(L, f"맨 위 막대는 {_title(r, 'ko')}{jo(_title(r, 'ko').strip('『』'), '이다', '다')}. 남이 쓴 글과 필자 표지가 빈 글 {int(r.n_other_works):,}편에 서로 다른 필자 표지 {int(r.n_other_writers):,}개가 나온다" + (f". 가장 많이 나온 표지는 {wn}({wk}편)다." if wn and wk else "."),
                  f"The top bar is {_title(r, 'en')}: {int(r.n_other_writers):,} distinct writer tags among {int(r.n_other_works):,} works by others or with an empty tag" + (f"; the most frequent tag is {wn} ({wk} works)." if wn and wk else "."))
         mis = tr(L, "사람 수가 아니라 필자 표지 문자열의 수다. 「門人」처럼 이름이 아닌 표기와 「未詳」(미상)도 문자열 하나로 세고, 한 사람이 다른 표기로 적혔으면 둘로 센다. 필자 표지가 빈 글은 편 수에는 들지만 표지 수에는 들지 않는다.",

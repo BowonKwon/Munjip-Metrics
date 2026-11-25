@@ -187,8 +187,8 @@ def genre_lead(shares: dict, n_own, lang) -> str:
     nm = (lambda g: GENRE_KO[g]) if ko else (lambda g: GENRE_EN[g])
     (a, ga), rest = v[0], v[1:]
     tied = len(rest) > 0 and rest[0][0] == a
-    P = lambda x: fmt(x, ".1%")   # 1.0.9 v1 (Codex 2.12): the same half-up rounding as the tooltips and tables (format() rounds the binary float: 0.8125 -> 81.2%)
-    # 1.0.9 v1 (Codex 2.11): when the next place is shared, name every class in it
+    P = lambda x: fmt(x, ".1%")   # 1.0.9: the same half-up rounding as the tooltips and tables (format() rounds the binary float: 0.8125 -> 81.2%)
+    # 1.0.9: when the next place is shared, name every class in it
     nxt = [g for x, g in rest if rest and x == rest[0][0]] if rest and not tied and rest[0][0] > 0 else []
     if ko:
         t = f"저자 글 {int(n_own):,}편 가운데 " if n_own == n_own else "저자 글 가운데 "
@@ -723,7 +723,7 @@ def collection_page(r, D, lang, is_person=False):
     stats = [(t["works"], f"{int(r.n_works):,}"), (t["own"], f"{int(r.n_own_works):,}"), (t["chars"], f"{int(r.chars):,}"), (("주석 글자의 비율" if ko else "share of characters in notes"), fmt(float(r.note_share), ".1%")),
              (("권 수(목차의 卷)" if ko else "fascicles (卷 headings)"), f"{int(r.n_gwon_titles)}"), (t["pub"], fmt(r.pub_year, ".0f") or "—")]
     # 1.0.5: one sentence under the title, filled with this collection's values
-    nb = int(fn.C.get("blank_col", {}).get(cid, 0))   # 1.0.9 v1 (Codex 3.14): works with an empty writer tag are not others' works
+    nb = int(fn.C.get("blank_col", {}).get(cid, 0))   # 1.0.9: works with an empty writer tag are not others' works
     body.append("<p>" + esc((f"이 문집에는 글 {int(r.n_works):,}편이 실려 있고, 그 가운데 문집의 저자가 쓴 글(저자 글)이 {int(r.n_own_works):,}편({fmt(float(r.own_share), '.1%')})이다. 나머지는 남이 쓴 서문·발문·행장 같은 글" + (f"과 필자 표지가 비어 있는 글({nb:,}편)" if nb else "") + "이다."
                              if ko else f"This collection holds {int(r.n_works):,} works, of which {int(r.n_own_works):,} ({fmt(float(r.own_share), '.1%')}) are by its author (own works); the rest are prefaces, postscripts, biographies and the like written by others" + (f", and works with an empty writer tag ({nb:,})" if nb else "") + ".")) + "</p>")
     body.append('<div class="stats">' + "".join(f'<div class="stat"><div class="n">{v}</div><small>{k}</small></div>' for k, v in stats) + "</div>")
@@ -733,7 +733,7 @@ def collection_page(r, D, lang, is_person=False):
         lead = genre_lead({g: float(bc[f"share_works_{g}"]) for g in GENRES}, r.n_own_works, lang)
         fig = fn.figx(svg_bars(items, ".1%", row_h=22, label_w=200, xlabel=("저자 글 가운데 그 갈래의 편 수 비율" if ko else "share of own works in the class, by number of works")),
                       *fn.mix_notes({g: float(bc[f"share_works_{g}"]) for g in GENRES}, r.n_own_works, lead, lang, "collection"), lang)   # 1.0.9: the gloss of the seven classes is now the Terms paragraph
-        # 1.0.9 v1 (Codex 1.6): a collection with no own works has no chart; it keeps the gloss as in 1.0.8
+        # 1.0.9: a collection with no own works has no chart; it keeps the gloss as in 1.0.8
         body.append("<h2 id=genre-mix>" + ("문체 구성(저자 글, 편 기준)" if ko else "Genre mix (own works, by works)") + "</h2>"
                     + (fig or f"<p class='src'>{esc(GENRE_GLOSS[lang])}</p>"))
     rows = []
