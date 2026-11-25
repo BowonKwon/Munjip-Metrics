@@ -161,6 +161,15 @@ def nice_ticks(lo: float, hi: float, n: int = 5) -> list[float]:
     return ticks
 
 
+def cover(ticks: list[float], vmax: float) -> list[float]:
+    """1.0.9: when the largest value lies beyond the last tick (a bar running past the last grid line, a line above the top
+    label), add one more tick so that the scale reaches it. Charts whose last tick already covers the largest value are
+    drawn as before."""
+    if len(ticks) > 1 and ticks[-1] < vmax - 1e-12:
+        return ticks + [round(ticks[-1] + (ticks[1] - ticks[0]), 10)]
+    return ticks
+
+
 def tick_spec(spec, ticks):
     """Number format for axis ticks: one more decimal when the ticks fall between the values the format can show
     (a 2.5 step printed with no decimals reads 0, 3, 5, 8)."""
@@ -182,13 +191,14 @@ def svg_lines(series, spec, width=900, height=320, ylabel="", xstep=None, bands=
     _w = lambda t: sum(11 if ord(ch) > 0x2E80 else 6.3 for ch in str(t))  # rough width of a label at the chart font size
     L, R, Tp, B = 62, (max(110, max(_w(n) for n, _, _ in series) + 14) if len(series) > 1 else 20), 22, (52 if xlabel else 36)   # 1.0.5: room for a name under the horizontal axis
     pw, ph = width - L - R, height - Tp - B
+    ticks = cover(nice_ticks(y0, y1), max(ys))   # 1.0.9
+    y1 = max(y1, ticks[-1])
     X = lambda v: L + (v - x0) / (x1 - x0 or 1) * pw
     Y = lambda v: Tp + ph - (v - y0) / (y1 - y0) * ph
     out = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="line chart">']
     if bands:
         for (a, b, label) in bands:
             out.append(f'<rect x="{X(a):.1f}" y="{Tp}" width="{max(X(b)-X(a),1):.1f}" height="{ph}" fill="var(--accent2)" fill-opacity=".10"><title>{esc(label)}</title></rect>')
-    ticks = nice_ticks(y0, y1)
     tspec = tick_spec(spec, ticks)
     for v in ticks:
         out.append(f'<line class="grid" x1="{L}" y1="{Y(v):.1f}" x2="{width-R}" y2="{Y(v):.1f}"/><text x="{L-6}" y="{Y(v)+4:.1f}" text-anchor="end">{fmt(v, tspec)}</text>')
@@ -261,11 +271,12 @@ def svg_bars(items, spec, width=900, row_h=22, label_w=240, xlabel="", errors=No
     _lw = lambda t: sum(11 if ord(ch) > 0x2E80 else 6.3 for ch in str(t))  # rough width of a label at the chart font size
     label_w = min(max(label_w, max(_lw(n) for n, _, _ in items) + 16), width * 0.62)  # a long row name (English edition titles) must fit its column
     pw = width - label_w - 30
+    _ticks = cover(nice_ticks(lo, hi), max(max(vals), hi_err))   # 1.0.9
+    hi = max(hi, _ticks[-1])
     hb = row_h * len(items) + 40
     h = hb + (16 if xlabel else 0)  # the axis title sits below the tick labels, not on them
     x = lambda v: label_w + (v - lo) / (hi - lo) * pw
     out = [f'<svg viewBox="0 0 {width} {h}" role="img" aria-label="bar chart">']
-    _ticks = nice_ticks(lo, hi)
     _tspec = tick_spec(spec, _ticks)
     for v in _ticks:
         out.append(f'<line class="grid" x1="{x(v):.1f}" y1="6" x2="{x(v):.1f}" y2="{hb-30}"/><text x="{x(v):.1f}" y="{hb-14}" text-anchor="middle">{fmt(v, _tspec)}</text>')

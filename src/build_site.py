@@ -28,8 +28,9 @@ except ImportError:  # before the takeaways are written
     TAKE, HOME_FIVE, PAGE_TAKE = {}, {"ko": [], "en": []}, {}
 
 VERSION = SITE["version"]
-BUILD_DATE = "2026-11-19"
+BUILD_DATE = "2026-11-25"
 import site_nav  # 1.0.7: section ids, section lists, a button back to the list; 1.0.8: floating language link below 1024px
+import fig_notes as fn  # 1.0.9: a line above every chart and labelled notes below it, numbers computed from the chart's tables
 REPO = "https://github.com/BowonKwon/Munjip-Metrics"
 ITKC = "https://db.itkc.or.kr/dir/node?dataId="
 GENRES = ["詩類", "書簡類", "序跋類", "傳記類", "公車類", "哀祭類", "雜著類"]
@@ -78,8 +79,9 @@ def svg_panels(series, spec, ylabel="", xlabel="", width=900, height=300) -> str
     x0, x1, y0, y1 = min(xs), max(xs), 0.0, max(ys) * 1.05 or 1
     k = len(series); L, gap, R, Tp, B = 50, 22, 8, 46, (52 if xlabel else 36)
     pw = (width - R - k * L - (k - 1) * gap) / k; ph = height - Tp - B
+    ticks = sc.cover(sc.nice_ticks(y0, y1), max(ys)); y1 = max(y1, ticks[-1])   # 1.0.9: the scale reaches the largest value
     Y = lambda v: Tp + ph - (v - y0) / (y1 - y0) * ph
-    ticks = sc.nice_ticks(y0, y1); tspec = sc.tick_spec(".0%" if spec.endswith("%") else spec, ticks)   # whole percents on the axis; hover keeps spec
+    tspec = sc.tick_spec(".0%" if spec.endswith("%") else spec, ticks)   # whole percents on the axis; hover keeps spec
     out = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="small multiple line charts">']
     if ylabel:
         out.append(f'<text x="{L}" y="13">{esc(ylabel)}</text>')
@@ -185,20 +187,27 @@ def genre_lead(shares: dict, n_own, lang) -> str:
     nm = (lambda g: GENRE_KO[g]) if ko else (lambda g: GENRE_EN[g])
     (a, ga), rest = v[0], v[1:]
     tied = len(rest) > 0 and rest[0][0] == a
+    P = lambda x: fmt(x, ".1%")   # 1.0.9 v1 (Codex 2.12): the same half-up rounding as the tooltips and tables (format() rounds the binary float: 0.8125 -> 81.2%)
+    # 1.0.9 v1 (Codex 2.11): when the next place is shared, name every class in it
+    nxt = [g for x, g in rest if rest and x == rest[0][0]] if rest and not tied and rest[0][0] > 0 else []
     if ko:
         t = f"저자 글 {int(n_own):,}편 가운데 " if n_own == n_own else "저자 글 가운데 "
-        t += f"가장 큰 갈래는 {nm(ga)}({a:.1%})"
+        t += f"가장 큰 갈래는 {nm(ga)}({P(a)})"
         if tied:
-            t += f", {nm(rest[0][1])}({rest[0][0]:.1%}) 둘이다."
-        elif rest and rest[0][0] > 0:
-            t += f", 그다음은 {nm(rest[0][1])}({rest[0][0]:.1%}){_ida(nm(rest[0][1]))}."
+            t += f", {nm(rest[0][1])}({P(rest[0][0])}) 둘이다."
+        elif len(nxt) > 1:
+            t += f", 그다음은 {'·'.join(nm(g) for g in nxt)}(각각 {P(rest[0][0])}){_ida(P(rest[0][0]))}."
+        elif nxt:
+            t += f", 그다음은 {nm(rest[0][1])}({P(rest[0][0])}){_ida(nm(rest[0][1]))}."
         else:
             t += f"{_ida(nm(ga))}."
         return t
     t = f"Of the {int(n_own):,} own works, " if n_own == n_own else "Of the own works, "
     if tied:
-        return t + f"the largest classes are {nm(ga)} and {nm(rest[0][1])} ({a:.1%} each)."
-    return t + f"the largest class is {nm(ga)} ({a:.1%})" + (f", followed by {nm(rest[0][1])} ({rest[0][0]:.1%})." if rest and rest[0][0] > 0 else ".")
+        return t + f"the largest classes are {nm(ga)} and {nm(rest[0][1])} ({P(a)} each)."
+    if len(nxt) > 1:
+        return t + f"the largest class is {nm(ga)} ({P(a)}), followed by " + ", ".join(nm(g) for g in nxt[:-1]) + f" and {nm(nxt[-1])} ({P(rest[0][0])} each)."
+    return t + f"the largest class is {nm(ga)} ({P(a)})" + (f", followed by {nm(rest[0][1])} ({P(rest[0][0])})." if nxt else ".")
 
 
 def small_note(shown, allc, lang, col="n_own_works") -> str:
@@ -229,6 +238,7 @@ T = {
                author="author", birth="born", death="died", pub="printed", title="title", genre="genre", recipients="addressees", letters="letters", epitaphs="epitaphs and biographies"),
 }
 sc.T = T
+sc.CSS += fn.NOTE_CSS   # 1.0.9
 
 # 1.0.3: navigation on leaf pages (metric pages, person pages) — same helper as Physical Constants / Sillok Metrics
 sc.CSS += ' main.wide{max-width:1300px} .crumbs{font-size:.84rem;color:var(--fg3);margin:-.4rem 0 .9rem} .crumbs .sep{margin:0 .25rem} .crumbs [aria-current]{color:var(--fg2)} .leaf{display:grid;grid-template-columns:220px minmax(0,1fr);gap:2rem;align-items:start} .sibs{position:sticky;top:4.2rem;max-height:calc(100vh - 5rem);overflow:auto;font-size:.84rem;border-right:1px solid var(--line);padding-right:.8rem} .sibs ol,.sibs-m ol{list-style:none;margin:.2rem 0 .8rem;padding:0} .sibs li a,.sibs-m li a{display:block;padding:.18rem .4rem;border-radius:6px;color:var(--fg2)} .sibs li a:hover,.sibs-m li a:hover{background:var(--bg2);text-decoration:none} .sibs a[aria-current],.sibs-m a[aria-current]{background:var(--bg2);color:var(--fg);font-weight:600} .sibs summary,.sibs-m summary{cursor:pointer;font-weight:600;color:var(--fg);margin:.3rem 0} .sibs .sg{font-weight:600;margin:.2rem 0} .sibs-m{display:none;border:1px solid var(--line);border-radius:10px;padding:.4rem .8rem;margin:0 0 1rem;font-size:.9rem} .pn{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:2.4rem;padding-top:1rem;font-size:.92rem} .pn a[rel=next]{margin-left:auto;text-align:right} .pn small{display:block;color:var(--fg3)} @media(max-width:860px){.leaf{display:block}.sibs{display:none}.sibs-m{display:block}} @media print{.crumbs,.sibs,.sibs-m,.pn{display:none}.leaf{display:block}}'
@@ -423,28 +433,28 @@ def headline(m, D: Data, lang):
         t9 = D.tot[D.tot.index.notna()]
         return f"{t9.chars_per_work_median.median():,.0f}", (f"세기별 중앙값 {len(t9)}개의 중앙값, 자/편" if ko else f"median of the {len(t9)} century medians, characters per work")
     if mid == "a5_note_share":
-        return f"{D.col.chars_note.sum()/D.col.chars.sum():.1%}", ("전체 글자 중 주" if ko else "of all characters are in notes")
+        return f"{fmt(float(D.col.chars_note.sum()/D.col.chars.sum()), '.1%')}", ("전체 글자 중 주" if ko else "of all characters are in notes")
     if mid == "a6_own_share":
-        return f"{D.col.n_own_works.sum()/D.col.n_works.sum():.1%}", ("전체 편 중 저자 자신의 글" if ko else "of all works are by the collection's author")
+        return f"{fmt(float(D.col.n_own_works.sum()/D.col.n_works.sum()), '.1%')}", ("전체 편 중 저자 자신의 글" if ko else "of all works are by the collection's author")
     if mid == "a7_gwon":
         return f"{int(D.gwon.match.sum())}/{len(D.gwon)}", ("권 수가 해제와 일치하는 문집" if ko else "collections whose fascicle count matches the introduction")
     b = D.b
     if mid == "b1_poetry_share":
         p = b[b.genre1 == "詩類"]
         v = p.n_works.sum() / p.total_works.sum()
-        return f"{v:.1%}", ("저자 글 중 시(편 기준, 전체)" if ko else "of own works are poetry (by works, all centuries)")
+        return f"{fmt(float(v), '.1%')}", ("저자 글 중 시(편 기준, 전체)" if ko else "of own works are poetry (by works, all centuries)")
     if mid == "b2_genre_mix":
         g = b.groupby("genre1").n_works.sum().sort_values(ascending=False)
-        return f"{g.iloc[1]/g.sum():.1%}", (f"둘째로 큰 분류 {GENRE_KO[g.index[1]]}의 비중" if ko else f"share of the second-largest class, {GENRE_EN[g.index[1]]}")
+        return f"{fmt(float(g.iloc[1]/g.sum()), '.1%')}", (f"둘째로 큰 분류 {GENRE_KO[g.index[1]]}의 비중" if ko else f"share of the second-largest class, {GENRE_EN[g.index[1]]}")
     for mid_, gname in (("b3_letters_share", "書簡類"), ("b4_memorials_share", "公車類"), ("b6_prefaces_share", "序跋類")):
         if mid == mid_:
             p = b[b.genre1 == gname]; v = p.n_works.sum() / b.groupby("century").total_works.first().sum()
-            return f"{v:.1%}", (f"저자 글 중 {GENRE_KO[gname]}" if ko else f"of own works are {GENRE_EN[gname]}")
+            return f"{fmt(float(v), '.1%')}", (f"저자 글 중 {GENRE_KO[gname]}" if ko else f"of own works are {GENRE_EN[gname]}")
     if mid == "b5_relational_share":
         g2 = D.b2; v = g2[(g2.genre1 == "哀祭類") | (g2.genre2.isin(["碑誌類", "行狀類"]))].n_works.sum() / g2.n_works.sum()
-        return f"{v:.1%}", ("저자 글 중 애제·비지·행장" if ko else "of own works commemorate others")
+        return f"{fmt(float(v), '.1%')}", ("저자 글 중 애제·비지·행장" if ko else "of own works commemorate others")
     if mid == "b7_other_share":
-        return f"{(D.other.n * D.other.other_share).sum() / D.other.n.sum():.1%}", ("저자 글 전체 중 기타류" if ko else "of own works are in an 'other' class")
+        return f"{fmt(float((D.other.n * D.other.other_share).sum() / D.other.n.sum()), '.1%')}", ("저자 글 전체 중 기타류" if ko else "of own works are in an 'other' class")
     if mid == "b8_poem_length":
         return f"{D.poems.poem_chars_median.median():,.0f}", ("시 한 편 글자 수, 세기 중앙값들의 중앙값" if ko else "characters per poem, median of century medians")
     if mid == "c1_recipients":
@@ -452,18 +462,18 @@ def headline(m, D: Data, lang):
     if mid == "c2_epitaph_subjects":
         return f"{int(D.epi.n_epitaphs.sum()):,}", ("저자가 쓴 비지·행장 편" if ko else "epitaphs and biographies by the authors")
     if mid == "c3_other_writers":
-        return f"{int(D.writers.n_other_writers.sum()):,}", ("문집에 글을 보탠 타인 필자(문집별 합)" if ko else "other writers contributing (summed over collections)")
+        return f"{int(D.writers.n_other_writers.sum()):,}", ("타인 필자 표지(문집별 합)" if ko else "other-writer tags (summed over collections)")
     dc = D.dcen
     if mid == "d1_dates":
-        return f"{(D.authors.birth.notna() & D.authors.death.notna()).mean():.1%}", ("저자 중 생년·몰년 모두 있음" if ko else "of authors have both birth and death years")
+        return f"{fmt(float((D.authors.birth.notna() & D.authors.death.notna()).mean()), '.1%')}", ("저자 중 생년·몰년 모두 있음" if ko else "of authors have both birth and death years")
     if mid == "d2_munkwa":
-        return f"{D.authors.linked.mean():.1%}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the examination roster")
+        return f"{fmt(float(D.authors.linked.mean()), '.1%')}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the examination roster")
     if mid == "d3_pub_lag":
         return f"{D.dcol.pub_lag.median():,.0f}", ("몰년에서 간행까지 햇수(중앙값)" if ko else "years from death to printing (median)")
     if mid == "d4_translation":
-        return f"{D.dcol.n_translated.sum()/D.dcol.n_works.sum():.1%}", (f"편 중 번역문 연계 · 연계 0건 문집 {int((D.dcol.n_translated == 0).sum()):,}종" if ko else f"of works have a linked translation · {int((D.dcol.n_translated == 0).sum()):,} collections with none")
+        return f"{fmt(float(D.dcol.n_translated.sum()/D.dcol.n_works.sum()), '.1%')}", (f"편 중 번역문 연계 · 연계 0건 문집 {int((D.dcol.n_translated == 0).sum()):,}종" if ko else f"of works have a linked translation · {int((D.dcol.n_translated == 0).sum()):,} collections with none")
     if mid == "d5_punct":
-        return f"{D.dcol.n_punct.sum()/D.dcol.n_works.sum():.1%}", ("편 중 교감표점 연계" if ko else "of works have a collated and punctuated edition")
+        return f"{fmt(float(D.dcol.n_punct.sum()/D.dcol.n_works.sum()), '.1%')}", ("편 중 교감표점 연계" if ko else "of works have a collated and punctuated edition")
     return "", ""
 
 
@@ -478,29 +488,29 @@ def reliability_card(m, D: Data, lang) -> str:
         body.append("<p>" + (f"검산: 문집 {n_match}종 전부에서 원본 XML 의 <내용> 문자 수 재계산과 일치, 문자 참조 잔존 0, 편 ID 중복 0." if ko else
                              f"Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references; no duplicate work ids.") + "</p>")
     if mid == "a7_gwon":
-        body.append("<p>" + (f"간략해제에 「n권 n책」이 있는 {len(D.gwon):,}종 중 목차의 卷n 수와 일치 {int(D.gwon.match.sum()):,}종({D.gwon.match.mean():.1%}). 불일치 160종의 원인은 코딩하지 않았다(표 참조)." if ko else
-                             f"Of the {len(D.gwon):,} collections whose introduction states 'n fascicles, n volumes', {int(D.gwon.match.sum()):,} ({D.gwon.match.mean():.1%}) agree with the 卷n count of the table of contents; the causes of the 160 mismatches were not coded (see the table).") + "</p>")
+        body.append("<p>" + (f"간략해제에 「n권 n책」이 있는 {len(D.gwon):,}종 중 목차의 卷n 수와 일치 {int(D.gwon.match.sum()):,}종({fmt(float(D.gwon.match.mean()), '.1%')}). 불일치 160종의 원인은 코딩하지 않았다(표 참조)." if ko else
+                             f"Of the {len(D.gwon):,} collections whose introduction states 'n fascicles, n volumes', {int(D.gwon.match.sum()):,} ({fmt(float(D.gwon.match.mean()), '.1%')}) agree with the 卷n count of the table of contents; the causes of the 160 mismatches were not coded (see the table).") + "</p>")
     if mid == "d1_dates":
         a = D.authors; agree = a.death_agrees.dropna()
-        body.append("<p>" + (f"한국역대인명정보에 성명+생년(P1 {int((a.persons_rule == 'P1').sum()):,}명) 또는 성명+호(P2 {int((a.persons_rule == 'P2').sum()):,}명)로 연결되어 몰년을 비교할 수 있는 {len(agree):,}명 중 일치 {int(agree.sum()):,}명({agree.mean():.1%})." if ko else
-                             f"Of the {len(agree):,} authors matched to the AKS person database (P1 by name and birth year, {int((a.persons_rule == 'P1').sum()):,}; P2 by name and pen name, {int((a.persons_rule == 'P2').sum()):,}) whose death year can be compared, {int(agree.sum()):,} ({agree.mean():.1%}) agree.") + "</p>")
+        body.append("<p>" + (f"한국역대인명정보에 성명+생년(P1 {int((a.persons_rule == 'P1').sum()):,}명) 또는 성명+호(P2 {int((a.persons_rule == 'P2').sum()):,}명)로 연결되어 몰년을 비교할 수 있는 {len(agree):,}명 중 일치 {int(agree.sum()):,}명({fmt(float(agree.mean()), '.1%')})." if ko else
+                             f"Of the {len(agree):,} authors matched to the AKS person database (P1 by name and birth year, {int((a.persons_rule == 'P1').sum()):,}; P2 by name and pen name, {int((a.persons_rule == 'P2').sum()):,}) whose death year can be compared, {int(agree.sum()):,} ({fmt(float(agree.mean()), '.1%')}) agree.") + "</p>")
     g = D.precision.get("genre"); blk = D.precision.get("genre_block_note")
     if m["series"] == "B" and g:
-        body.append("<p>" + (f"분류 품질: 저자 글 표본 {g['n']}편의 제목을 보고 고전번역원 대분류가 맞는지 판정한 결과 맞다 {g['precision']:.1%} (윌슨 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; 판단 유보 {g['undecided']}건은 불일치로 셈" + (f"; 그중 {D.precision['genre_recode']['n']}편을 다른 코더가 앞 판정을 보지 않고(블라인드) 다시 판정해 일치 {D.precision['genre_recode']['agreement']:.0%}" if D.precision.get('genre_recode') else "") + ")." if ko else
-                             f"Classification quality: a sample of {g['n']} own works was judged from titles for whether the ITKC major class fits; {g['precision']:.1%} fit (Wilson 95% {g['ci_lo']:.1%}–{g['ci_hi']:.1%}; {g['undecided']} undecided counted as disagreement" + (f"; a second coder re-judged {D.precision['genre_recode']['n']} of them blind (without the first judgments) with {D.precision['genre_recode']['agreement']:.0%} agreement" if D.precision.get('genre_recode') else "") + ").") + genre_sample_note(lang) +
+        body.append("<p>" + (f"분류 품질: 저자 글 표본 {g['n']}편의 제목을 보고 고전번역원 대분류가 맞는지 판정한 결과 맞다 {fmt(float(g['precision']), '.1%')} (윌슨 95% {fmt(float(g['ci_lo']), '.1%')}–{fmt(float(g['ci_hi']), '.1%')}; 판단 유보 {g['undecided']}건은 불일치로 셈" + (f"; 그중 {D.precision['genre_recode']['n']}편을 다른 코더가 앞 판정을 보지 않고(블라인드) 다시 판정해 일치 {fmt(float(D.precision['genre_recode']['agreement']), '.0%')}" if D.precision.get('genre_recode') else "") + ")." if ko else
+                             f"Classification quality: a sample of {g['n']} own works was judged from titles for whether the ITKC major class fits; {fmt(float(g['precision']), '.1%')} fit (Wilson 95% {fmt(float(g['ci_lo']), '.1%')}–{fmt(float(g['ci_hi']), '.1%')}; {g['undecided']} undecided counted as disagreement" + (f"; a second coder re-judged {D.precision['genre_recode']['n']} of them blind (without the first judgments) with {fmt(float(D.precision['genre_recode']['agreement']), '.0%')} agreement" if D.precision.get('genre_recode') else "") + ").") + genre_sample_note(lang) +
                     ((f" 알려진 덩어리 오류: 『{blk['title_ko']}』({blk['collection_id']})의 冊文類 {blk['n_works']:,}편은 제목이 시다 — 고전번역원 분류대로 두고 여기 적는다." if ko else f" Known block error: {blk['n_works']:,} works of {_title_hj(D, blk['collection_id'])} ({blk['collection_id']}) filed as 冊文類 carry poem titles; they are left as classified and noted here.") if blk else "") + "</p>")
     key = {"c1_recipients": "recipients", "c2_epitaph_subjects": "epitaphs"}.get(mid)
     p = D.precision.get(key) if key else None
     if kind == "sampled-precision":
         if mid == "d2_munkwa":
             j = D.precision.get("munkwa_jaho"); h = D.precision.get("munkwa")
-            body.append("<p>" + ((f"연결 정밀도의 1차 계획(간략해제의 급제 서술과 대조)은 신호가 없었다 — 해제 표본 {h['n']+h.get('unclear',0)+h.get('recall_n',0)}건 중 급제를 적은 것이 1건뿐이다. 대신 서지의 자·호와 방목의 자·호가 양쪽에 있는 연결 저자 {j['n']}명(연결 613명 중 비교 가능한 부분집합; M2 2명은 연결에 쓴 자·호를 다시 비교)에서 하나라도 같은 비율 {j['rate']:.1%} ({j['agree']}명; 불일치 {j['n']-j['agree']}명은 이체자·별호 차이를 포함). 전체 연결의 독립 정밀도는 아니다." if h else "") if ko else
-                                 (f"The first plan for linkage precision (checking the examination statement in the short introductions) gave no signal: only 1 of {h['n']+h.get('unclear',0)+h.get('recall_n',0)} sampled introductions mentions a pass. Instead, among the {j['n']} linked authors whose courtesy or pen name is given on both sides (a comparable subset of the 613; for the 2 M2 links the same names were used for linking), {j['rate']:.1%} ({j['agree']}) agree on at least one; the {j['n']-j['agree']} disagreements include variant characters and alternative pen names. This is not an independent precision for all links." if h else "")) + "</p>")
+            body.append("<p>" + ((f"연결 정밀도의 1차 계획(간략해제의 급제 서술과 대조)은 신호가 없었다 — 해제 표본 {h['n']+h.get('unclear',0)+h.get('recall_n',0)}건 중 급제를 적은 것이 1건뿐이다. 대신 서지의 자·호와 방목의 자·호가 양쪽에 있는 연결 저자 {j['n']}명(연결 613명 중 비교 가능한 부분집합; M2 2명은 연결에 쓴 자·호를 다시 비교)에서 하나라도 같은 비율 {fmt(float(j['rate']), '.1%')} ({j['agree']}명; 불일치 {j['n']-j['agree']}명은 이체자·별호 차이를 포함). 전체 연결의 독립 정밀도는 아니다." if h else "") if ko else
+                                 (f"The first plan for linkage precision (checking the examination statement in the short introductions) gave no signal: only 1 of {h['n']+h.get('unclear',0)+h.get('recall_n',0)} sampled introductions mentions a pass. Instead, among the {j['n']} linked authors whose courtesy or pen name is given on both sides (a comparable subset of the 613; for the 2 M2 links the same names were used for linking), {fmt(float(j['rate']), '.1%')} ({j['agree']}) agree on at least one; the {j['n']-j['agree']} disagreements include variant characters and alternative pen names. This is not an independent precision for all links." if h else "")) + "</p>")
         elif p:
             design = {"recipients": ("파싱된 서간 300편 + 파싱 안 된 60편(두 층, 가중 없음)" if ko else "300 parsed and 60 unparsed letters (two strata, unweighted)"),
                       "epitaphs": ("단순무작위 200편(그중 패턴 일치 194편이 정밀도 분모)" if ko else "a simple random sample of 200 (194 with a pattern match form the precision denominator)")}[key]
-            body.append("<p>" + (f"표본 {design}을 코딩해 잰 정밀도 {p['precision']:.1%} ({p['yes']}/{p['n']}, 윌슨 95% {p['ci_lo']:.1%}–{p['ci_hi']:.1%})" + (f"; 비가중 표본 재현율 {p['recall']:.1%}(코더가 이름을 찾은 {p['recall_n']}건 중)" if p.get('recall') is not None else "") + ". 코드북과 판정 전체는 데이터 면에." if ko else
-                                 f"Precision {p['precision']:.1%} ({p['yes']}/{p['n']}, Wilson 95% {p['ci_lo']:.1%}–{p['ci_hi']:.1%}) on {design}" + (f"; unweighted sample recall {p['recall']:.1%} (of {p['recall_n']} with a coder-found name)" if p.get('recall') is not None else "") + ". Codebook and all judgments on the Data page.") + "</p>")
+            body.append("<p>" + (f"표본 {design}을 코딩해 잰 정밀도 {fmt(float(p['precision']), '.1%')} ({p['yes']}/{p['n']}, 윌슨 95% {fmt(float(p['ci_lo']), '.1%')}–{fmt(float(p['ci_hi']), '.1%')})" + (f"; 비가중 표본 재현율 {fmt(float(p['recall']), '.1%')}(코더가 이름을 찾은 {p['recall_n']}건 중)" if p.get('recall') is not None else "") + ". 코드북과 판정 전체는 데이터 면에." if ko else
+                                 f"Precision {fmt(float(p['precision']), '.1%')} ({p['yes']}/{p['n']}, Wilson 95% {fmt(float(p['ci_lo']), '.1%')}–{fmt(float(p['ci_hi']), '.1%')}) on {design}" + (f"; unweighted sample recall {fmt(float(p['recall']), '.1%')} (of {p['recall_n']} with a coder-found name)" if p.get('recall') is not None else "") + ". Codebook and all judgments on the Data page.") + "</p>")
         else:
             body.append("<p>" + ("표본 코딩 진행 중 — 이 판에서는 파싱 결과의 건수만 싣는다." if ko else "Sample coding in progress; this version shows parsed counts only.") + "</p>")
     badge = {"exact": ("집계" if ko else "exact"), "external-match": ("외부 대조" if ko else "external"), "sampled-precision": ("표본 정밀도" if ko else "sampled")}[kind]
@@ -513,6 +523,20 @@ def top_bars(D, df, col, spec, lang, n=30, label_col=None, xlabel=""):
         df = df.join(D.col[["label_ko", "label_en"]], how="left") if df.index.name == "collection_id" else df.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
     top = df.sort_values(col, ascending=False).head(n)
     return svg_bars([(D.label(r, lang), float(r[col]), 0) for _, r in top.iterrows()], spec, row_h=20, label_w=220, xlabel=xlabel)
+
+
+def top_fig(D, df, col, spec, lang, mid, xlabel="", extra_mis=""):
+    """1.0.9: a top-30 chart with its notes; the bars are drawn by top_bars exactly as before."""
+    top = df.sort_values(col, ascending=False).head(30)
+    items = [(D.label(r, lang), float(r[col]), 0) for _, r in top.iterrows()]
+    intro, parts = fn.top_notes(mid, items, spec, lang, extra_mis=extra_mis, top_row=top.iloc[0], allv=df[col])
+    return fn.figx(top_bars(D, df, col, spec, lang, xlabel=xlabel), intro, parts, lang)
+
+
+def bars_fig(D, items, spec, lang, mid, top_row, extra_mis="", allv=None, **kw):
+    """1.0.9: a ranked bar chart drawn by svg_bars, with its notes. allv: all values the bars were chosen from (ties)."""
+    intro, parts = fn.top_notes(mid, items, spec, lang, extra_mis=extra_mis, top_row=top_row, allv=allv)
+    return fn.figx(svg_bars(items, spec, **kw), intro, parts, lang)
 
 
 def metric_figure(m, D: Data, lang) -> str:
@@ -528,33 +552,38 @@ def metric_figure(m, D: Data, lang) -> str:
     def lines(series, spec, **kw):   # 1.0.5: every by-century line chart names both axes
         yl = next(ynames, ("", ""))
         return svg_lines(series, spec, ylabel=yl[0 if ko else 1], xlabel=X_CENTURY[lang], **kw)
+    _k = iter(range(10))
+
+    def lfig(series, spec, **kw):   # 1.0.9: the chart with its notes (fig_notes.line_notes), k = its place on the page
+        svg = lines(series, spec, **kw)
+        intro, parts = fn.line_notes(mid, next(_k), series, spec, lang)
+        return fn.figx(svg, intro, parts, lang)
     if mid in LINE_Y or mid in ("b1_poetry_share", "b3_letters_share", "b4_memorials_share", "b6_prefaces_share"):
         out.append(f"<p class='src'>{esc(century_note(D, lang))}</p>")
     if mid == "b2_genre_mix":
         out.append(f"<p class='src'>{esc(GENRE_GLOSS[lang])}</p>")
     if mid == "a1_works":
-        out.append(fig(top_bars(D, col, "n_works", ",.0f", lang, xlabel=t["works"]), ("편 수 상위 30 문집." if ko else "The 30 collections with the most works.")))
-        out.append(fig(lines([cen_series(D.tot.reset_index(), "n_works", lang, ("편" if ko else "works"), 0), cen_series(D.tot.reset_index(), "n_own_works", lang, ("저자 글" if ko else "own works"), 1)], ",.0f", xstep=1), ("저자 생년 세기별 편 수." if ko else "Works by the author's birth century.")))
+        out.append(top_fig(D, col, "n_works", ",.0f", lang, mid, xlabel=t["works"]))
+        out.append(lfig([cen_series(D.tot.reset_index(), "n_works", lang, ("편" if ko else "works"), 0), cen_series(D.tot.reset_index(), "n_own_works", lang, ("저자 글" if ko else "own works"), 1)], ",.0f", xstep=1))
         out.append(table_html(col.reset_index().assign(series_l=lambda f: f.series.map(lambda v: series_label(v, lang))), [("label_" + lang, t["title"], None), ("author_" + ("ko" if ko else "hj"), t["author"], None), ("birth", t["birth"], None), ("series_l", t["series_col"], None), ("n_works", t["works"], ",.0f"), ("n_own_works", t["own"], ",.0f"), ("own_share", t["share"], ".1%")], "t_a1", lang))
     elif mid == "a2_chars":
-        out.append(fig(top_bars(D, col, "chars", ",.0f", lang, xlabel=t["chars"]), ("글자 수 상위 30 문집(본문 + 주)." if ko else "The 30 collections with the most characters (text + notes).")))
-        out.append(fig(lines([cen_series(D.tot.reset_index(), "chars_main", lang, ("본문" if ko else "text"), 0), cen_series(D.tot.reset_index(), "chars_note", lang, ("주" if ko else "notes"), 1)], ",.0f", xstep=1), ("세기별 글자 수." if ko else "Characters by century.")))
+        out.append(top_fig(D, col, "chars", ",.0f", lang, mid, xlabel=t["chars"]))
+        out.append(lfig([cen_series(D.tot.reset_index(), "chars_main", lang, ("본문" if ko else "text"), 0), cen_series(D.tot.reset_index(), "chars_note", lang, ("주" if ko else "notes"), 1)], ",.0f", xstep=1))
         out.append(table_html(col.reset_index(), [("label_" + lang, t["title"], None), ("author_" + ("ko" if ko else "hj"), t["author"], None), ("chars_main", ("본문 글자" if ko else "text characters"), ",.0f"), ("chars_note", t["notes"], ",.0f"), ("note_share", ("주 비율" if ko else "note share"), ".1%"), ("chars_per_work_median", ("편당 글자 중앙값" if ko else "median per work"), ",.0f")], "t_a2", lang))
     elif mid == "a3_centuries":
         s = D.ser
-        out.append(fig(lines([cen_series(s[s.series == "정편"], "n_collections", lang, ("정편" if ko else "first series"), 0), cen_series(s[s.series == "속편"], "n_collections", lang, ("속편" if ko else "supplement"), 1)], ",.0f", xstep=1), ("저자 생년 세기별 문집 수, 정편·속편." if ko else "Collections by the author's birth century, first series and supplement.")))
+        out.append(lfig([cen_series(s[s.series == "정편"], "n_collections", lang, ("정편" if ko else "first series"), 0), cen_series(s[s.series == "속편"], "n_collections", lang, ("속편" if ko else "supplement"), 1)], ",.0f", xstep=1))
         tbl = D.cen.copy(); tbl["century"] = tbl.birth_century.map(cl); tbl["series_l"] = tbl.series.map(lambda v: series_label(v, lang))
         out.append(table_html(tbl, [("century", t["century"], None), ("series_l", t["series_col"], None), ("n_collections", t["collections"], ",.0f"), ("n_authors", t["authors"], ",.0f"), ("n_works", t["works"], ",.0f"), ("chars", t["chars"], ",.0f")], "t_a3", lang, filt=False))
     elif mid == "a4_chars_per_work":
-        out.append(fig(lines([cen_series(D.tot.reset_index(), "chars_per_work_median", lang, ("중앙값" if ko else "median"), 0), cen_series(D.tot.reset_index(), "chars_per_work_mean", lang, ("평균" if ko else "mean"), 1)], ",.0f", xstep=1), ("편당 글자 수, 세기별." if ko else "Characters per work by century.")))
+        out.append(lfig([cen_series(D.tot.reset_index(), "chars_per_work_median", lang, ("중앙값" if ko else "median"), 0), cen_series(D.tot.reset_index(), "chars_per_work_mean", lang, ("평균" if ko else "mean"), 1)], ",.0f", xstep=1))
     elif mid == "a5_note_share":
-        out.append(fig(lines([cen_series(D.tot.reset_index(), "note_share", lang, ("주 비율" if ko else "note share"), 0)], ".1%", xstep=1), ("전체 글자 중 주의 비율, 세기별." if ko else "Share of characters in notes by century.")))
-        out.append(fig(top_bars(D, col, "note_share", ".1%", lang, xlabel=t["share"]), ("주 비율 상위 30 문집." if ko else "The 30 collections with the highest note share.")
-                       + small_note(col.sort_values("note_share", ascending=False).head(30), col, lang)))
+        out.append(lfig([cen_series(D.tot.reset_index(), "note_share", lang, ("주 비율" if ko else "note share"), 0)], ".1%", xstep=1))
+        out.append(top_fig(D, col, "note_share", ".1%", lang, mid, xlabel=t["share"], extra_mis=small_note(col.sort_values("note_share", ascending=False).head(30), col, lang)))
     elif mid == "a6_own_share":
-        out.append(fig(lines([cen_series(D.tot.reset_index(), "own_share", lang, ("저자 글 비율" if ko else "own-work share"), 0)], ".1%", xstep=1), ("저자 글 비율, 세기별." if ko else "Own-work share by century.")))
+        out.append(lfig([cen_series(D.tot.reset_index(), "own_share", lang, ("저자 글 비율" if ko else "own-work share"), 0)], ".1%", xstep=1))
         low = col.sort_values("own_share").head(30)
-        out.append(fig(svg_bars([(D.label(r, lang), float(r.own_share), 2) for _, r in low.iterrows()], ".1%", row_h=20, label_w=220), ("저자 글 비율이 낮은 30 문집 — 부록·타인 글이 많은 문집." if ko else "The 30 collections with the lowest own-work share — collections heavy with appendices and others' writing.") + small_note(low, col, lang)))
+        out.append(bars_fig(D, [(D.label(r, lang), float(r.own_share), 2) for _, r in low.iterrows()], ".1%", lang, mid, low.iloc[0], extra_mis=small_note(low, col, lang), allv=col.own_share, row_h=20, label_w=220))
     elif mid == "a7_gwon":
         g = D.gwon.merge(D.col[["collection_id", "title_hj"]], on="collection_id", how="left")
         out.append(table_html(g, [(("title_ko" if ko else "title_hj"), t["title"], None), ("n_gwon_titles", ("목차 卷n 수" if ko else "卷n headings"), ",.0f"), ("haeje_gwon", ("해제 권수" if ko else "fascicles per introduction"), ",.0f"), ("haeje_chaek", ("해제 책수" if ko else "volumes per introduction"), ",.0f"), ("match", ("일치" if ko else "match"), ",.0f")], "t_a7", lang))
@@ -562,9 +591,8 @@ def metric_figure(m, D: Data, lang) -> str:
         g = {"b1_poetry_share": "詩類", "b3_letters_share": "書簡類", "b4_memorials_share": "公車類", "b6_prefaces_share": "序跋類"}[mid]
         b = D.b[D.b.genre1 == g]; ba = D.b_all[D.b_all.genre1 == g]
         yl = next(ynames, ("", ""))   # 1.0.6: three small charts on one scale instead of three crossing lines
-        out.append(fig(svg_panels([cen_series(b, "share_works", lang, ("편 기준" if ko else "by works"), 0), cen_series(b, "share_chars", lang, ("글자 기준" if ko else "by characters"), 1), cen_series(ba, "share_works", lang, ("편 기준, 타인 글 포함" if ko else "by works, incl. others"), 2)], ".1%", ylabel=yl[0 if ko else 1], xlabel=X_CENTURY[lang]),
-                       (f"{GENRE_KO[g]} 비중, 저자 생년 세기별. 같은 비중을 세 가지 방식으로 센 그림 셋이고, 세 그림의 세로 눈금이 같다. 왼쪽 「편 기준」은 저자 글의 편 수로, 가운데 「글자 기준」은 저자 글의 글자 수로 센 비율이고, 오른쪽 「편 기준, 타인 글 포함」은 문집에 함께 실린 다른 사람의 글까지 넣어 편 수로 센 비율이다. 위에 있을수록 그 갈래의 몫이 크다." if ko
-               else f"Share of {GENRE_EN[g]} by the author's birth century, counted three ways in three small charts on the same vertical scale. Left, 'by works' counts the author's own works; middle, 'by characters' counts their characters; right, 'by works, incl. others' also counts the works by other writers printed in the collection. Higher = a larger share for this class.")))
+        out.append(fn.figx(svg_panels([cen_series(b, "share_works", lang, ("편 기준" if ko else "by works"), 0), cen_series(b, "share_chars", lang, ("글자 기준" if ko else "by characters"), 1), cen_series(ba, "share_works", lang, ("편 기준, 타인 글 포함" if ko else "by works, incl. others"), 2)], ".1%", ylabel=yl[0 if ko else 1], xlabel=X_CENTURY[lang]),
+                           *fn.panel_notes(g, lang), lang))
         bc = D.b_col.copy(); colname = f"share_works_{g}"
         bc = bc.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
         # Ties at the top are ordered by the number of own works, largest first, so the thirty shown are not an arbitrary draw
@@ -572,12 +600,12 @@ def metric_figure(m, D: Data, lang) -> str:
         top = bc.sort_values([colname, "n_own_works"], ascending=[False, False], kind="mergesort").head(30)
         n_full = int((bc[colname] >= 1 - 1e-12).sum())
         tie = ((f" 비중이 100%인 문집이 {n_full}종이어서, 그 가운데 저자 글이 많은 순으로 30종을 그렸다." if ko else f" {n_full} collections have a share of 100%; the thirty shown are those with the most own works.") if n_full > 30 else "")
-        out.append(fig(svg_bars([(D.label(r, lang), float(r[colname]), 0) for _, r in top.iterrows()], ".1%", row_h=20, label_w=220), (f"{GENRE_KO[g]} 비중 상위 30 문집(편 기준, 저자 글)." if ko else f"The 30 collections with the highest {GENRE_EN[g]} share (by works, own works).") + tie + small_note(top, bc, lang)))
+        out.append(bars_fig(D, [(D.label(r, lang), float(r[colname]), 0) for _, r in top.iterrows()], ".1%", lang, mid, top.iloc[0], extra_mis=tie + small_note(top, bc, lang), allv=bc[colname], row_h=20, label_w=220))
         tbl = b.copy(); tbl["century_l"] = tbl.century.map(cl)
         out.append(table_html(tbl, [("century_l", t["century"], None), ("n_works", t["works"], ",.0f"), ("total_works", ("저자 글 전체" if ko else "own works"), ",.0f"), ("share_works", ("편 기준" if ko else "by works"), ".1%"), ("share_chars", ("글자 기준" if ko else "by characters"), ".1%")], "t_b", lang, filt=False))
     elif mid == "b2_genre_mix":
         series = [cen_series(D.b[D.b.genre1 == g], "share_works", lang, (GENRE_KO[g] if ko else GENRE_EN[g]), i % 4) for i, g in enumerate(GENRES)]
-        out.append(fig(lines(series, ".0%", xstep=1, height=380), ("7대분류의 편 기준 비중, 세기별(저자 글)." if ko else "Work-based share of the seven classes by century (own works).")))
+        out.append(lfig(series, ".0%", xstep=1, height=380))
         piv = D.b.pivot(index="century", columns="genre1", values="share_works").reindex(columns=GENRES).reset_index(); piv["century_l"] = piv.century.map(cl)
         out.append(table_html(piv, [("century_l", t["century"], None)] + [(g, (GENRE_KO[g] if ko else GENRE_EN[g]), ".1%") for g in GENRES], "t_b2", lang, filt=False))
         g2 = D.b2.groupby(["genre1", "genre2"]).n_works.sum().reset_index().sort_values("n_works", ascending=False)
@@ -585,60 +613,57 @@ def metric_figure(m, D: Data, lang) -> str:
     elif mid == "b5_relational_share":
         g2 = D.b2; sel = g2[(g2.genre1 == "哀祭類") | (g2.genre2.isin(["碑誌類", "行狀類"]))].groupby("century").n_works.sum()
         tot = g2.groupby("century").n_works.sum(); df = pd.DataFrame({"century": tot.index, "n": sel.reindex(tot.index).fillna(0).values, "total": tot.values}); df["share"] = df.n / df.total
-        out.append(fig(lines([cen_series(df, "share", lang, ("비중" if ko else "share"), 0)], ".1%", xstep=1), ("애제·비지·행장 비중, 세기별." if ko else "Share of elegies, epitaphs and biographies by century.")))
+        out.append(lfig([cen_series(df, "share", lang, ("비중" if ko else "share"), 0)], ".1%", xstep=1))
         df["century_l"] = df.century.map(cl)
         out.append(table_html(df, [("century_l", t["century"], None), ("n", t["works"], ",.0f"), ("total", ("저자 글 전체" if ko else "own works"), ",.0f"), ("share", t["share"], ".1%")], "t_b5", lang, filt=False))
     elif mid == "b7_other_share":
-        out.append(fig(lines([cen_series(D.other, "other_share", lang, ("기타류" if ko else "other"), 0)], ".1%", xstep=1), ("중분류 其他類의 비율, 세기별." if ko else "Share of works in 'other' minor classes by century.")))
+        out.append(lfig([cen_series(D.other, "other_share", lang, ("기타류" if ko else "other"), 0)], ".1%", xstep=1))
     elif mid == "b8_poem_length":
-        out.append(fig(lines([cen_series(D.poems, "poem_chars_median", lang, ("중앙값" if ko else "median"), 0), cen_series(D.poems, "poem_chars_p25", lang, Q_NAME[lang][0], 2), cen_series(D.poems, "poem_chars_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1), ("시 한 편의 본문 글자 수, 세기별 중앙값과 사분위." if ko else "Main-text characters per poem: median and quartiles by century.")))
+        out.append(lfig([cen_series(D.poems, "poem_chars_median", lang, ("중앙값" if ko else "median"), 0), cen_series(D.poems, "poem_chars_p25", lang, Q_NAME[lang][0], 2), cen_series(D.poems, "poem_chars_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1))
         tbl = D.poems.copy(); tbl["century_l"] = tbl.century.map(cl)
         out.append(table_html(tbl, [("century_l", t["century"], None), ("n_poems", ("시 편 수" if ko else "poems"), ",.0f"), ("poem_chars_median", ("중앙값" if ko else "median"), ",.0f"), ("poem_chars_mean", ("평균" if ko else "mean"), ",.1f")], "t_b8", lang, filt=False))
     elif mid == "c1_recipients":
         L = D.letters.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
         top = L.sort_values("n_unique", ascending=False).head(30)
-        out.append(fig(svg_bars([(D.label(r, lang), float(r.n_unique), 0) for _, r in top.iterrows()], ",.0f", row_h=20, label_w=220, xlabel=("수신자 문자열 고유 수" if ko else "distinct addressee strings")), ("수신자 고유 수 상위 30 문집." if ko else "The 30 collections with the most distinct addressees.")))
+        out.append(bars_fig(D, [(D.label(r, lang), float(r.n_unique), 0) for _, r in top.iterrows()], ",.0f", lang, mid, top.iloc[0], allv=L.n_unique, row_h=20, label_w=220, xlabel=("수신자 문자열 고유 수" if ko else "distinct addressee strings")))
         out.append(table_html(L, [("label_" + lang, t["title"], None), ("n_letters", t["letters"], ",.0f"), ("parse_rate", ("파싱 성공" if ko else "parsed"), ".0%"), ("n_unique", ("고유 수신자" if ko else "distinct addressees"), ",.0f"), ("top1_share", ("1위 점유" if ko else "top-1 share"), ".1%"), ("top3_share", ("상위 3 점유" if ko else "top-3 share"), ".1%"), ("hhi", "HHI", ".3f")], "t_c1", lang))
         cc = D.c_cen.copy(); cc["century_l"] = cc.century.map(cl)
         out.append("<h2 id=by-century>" + ("세기별" if ko else "By century") + "</h2>" + table_html(cc, [("century_l", t["century"], None), ("n_letters", t["letters"], ",.0f"), ("n_unique", ("고유 수신자" if ko else "distinct addressees"), ",.0f"), ("top3_share", ("상위 3 점유" if ko else "top-3 share"), ".1%")], "t_c1c", lang, filt=False))
     elif mid == "c2_epitaph_subjects":
         E = D.epi.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
         top = E.sort_values("n_epitaphs", ascending=False).head(30)
-        out.append(fig(svg_bars([(D.label(r, lang), float(r.n_epitaphs), 0) for _, r in top.iterrows()], ",.0f", row_h=20, label_w=220, xlabel=t["epitaphs"]), ("비지·행장 편 수 상위 30 문집." if ko else "The 30 collections with the most epitaphs and biographies.")))
+        out.append(bars_fig(D, [(D.label(r, lang), float(r.n_epitaphs), 0) for _, r in top.iterrows()], ",.0f", lang, mid, top.iloc[0], allv=E.n_epitaphs, row_h=20, label_w=220, xlabel=t["epitaphs"]))
         cols = [("label_" + lang, t["title"], None), ("n_epitaphs", t["epitaphs"], ",.0f"), ("n_parsed", ("파싱" if ko else "parsed"), ",.0f"), ("subj_n_unique", ("고유 피장자" if ko else "distinct subjects"), ",.0f")] + [(k, k, ",.0f") for k in ("碑誌類", "行狀類") if k in E.columns]
         out.append(table_html(E, cols, "t_c2", lang))
     elif mid == "c3_other_writers":
         Wr = D.writers.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
         top = Wr.sort_values("n_other_writers", ascending=False).head(30)
-        out.append(fig(svg_bars([(D.label(r, lang), float(r.n_other_writers), 0) for _, r in top.iterrows()], ",.0f", row_h=20, label_w=220), ("타인 필자 수 상위 30 문집." if ko else "The 30 collections with the most other writers.")))
-        out.append(table_html(Wr, [("label_" + lang, t["title"], None), ("n_other_works", ("타인 편" if ko else "works by others"), ",.0f"), ("n_other_writers", ("타인 필자" if ko else "other writers"), ",.0f"), ("top_writers", ("최다 필자(편)" if ko else "most frequent (works)"), None)], "t_c3", lang))
+        out.append(bars_fig(D, [(D.label(r, lang), float(r.n_other_writers), 0) for _, r in top.iterrows()], ",.0f", lang, mid, top.iloc[0], allv=Wr.n_other_writers, row_h=20, label_w=220))
+        out.append(table_html(Wr, [("label_" + lang, t["title"], None), ("n_other_works", ("저자 글로 분류되지 않은 편" if ko else "works not classed as the author's own"), ",.0f"), ("n_other_writers", ("필자 표지" if ko else "writer tags"), ",.0f"), ("top_writers", ("최다 표지(편)" if ko else "most frequent tags (works)"), None)], "t_c3", lang))
     elif mid in ("d1_dates", "d2_munkwa", "d3_pub_lag", "d4_translation", "d5_punct"):
         dc = D.dcen.copy(); dc["century_l"] = dc.century.map(cl)
         if mid == "d1_dates":
             dc["death_share"] = dc.death_known / dc.n_authors
-            out.append(fig(lines([cen_series(dc, "death_share", lang, ("몰년 있음" if ko else "death year known"), 0)], ".0%", xstep=1), ("몰년이 있는 저자 비율, 세기별." if ko else "Share of authors with a death year by century.")))
-            out.append(fig(lines([cen_series(dc, "lifespan_median", lang, ("수명 중앙값" if ko else "median lifespan"), 1)], ",.0f", xstep=1), ("수명 중앙값(몰년 − 생년), 세기별." if ko else "Median lifespan (death − birth) by century.")))
+            out.append(lfig([cen_series(dc, "death_share", lang, ("몰년 있음" if ko else "death year known"), 0)], ".0%", xstep=1))
+            out.append(lfig([cen_series(dc, "lifespan_median", lang, ("수명 중앙값" if ko else "median lifespan"), 1)], ",.0f", xstep=1))
             out.append(table_html(dc, [("century_l", t["century"], None), ("n_authors", t["authors"], ",.0f"), ("birth_known", ("생년 있음" if ko else "birth known"), ",.0f"), ("death_known", ("몰년 있음" if ko else "death known"), ",.0f"), ("lifespan_median", ("수명 중앙값" if ko else "median lifespan"), ",.0f")], "t_d1", lang, filt=False))
         elif mid == "d2_munkwa":
-            out.append(fig(lines([cen_series(dc, "link_rate", lang, ("연결률" if ko else "linkage"), 0), cen_series(dc, "link_rate_strict", lang, ("성명+생년만" if ko else "name + birth only"), 2)], ".0%", xstep=1), ("문과방목 연결률, 세기별." if ko else "Examination-roster linkage by century.")))
-            out.append(fig(lines([cen_series(dc, "exam_age_median", lang, ("급제 연령 중앙값" if ko else "median age at passing"), 1), cen_series(dc, "exam_age_p25", lang, Q_NAME[lang][0], 2), cen_series(dc, "exam_age_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1), ("연결된 저자의 급제 연령(세는나이), 세기별." if ko else "Age at passing (East Asian reckoning) of linked authors by century.")))
+            out.append(lfig([cen_series(dc, "link_rate", lang, ("연결률" if ko else "linkage"), 0), cen_series(dc, "link_rate_strict", lang, ("성명+생년만" if ko else "name + birth only"), 2)], ".0%", xstep=1))
+            out.append(lfig([cen_series(dc, "exam_age_median", lang, ("급제 연령 중앙값" if ko else "median age at passing"), 1), cen_series(dc, "exam_age_p25", lang, Q_NAME[lang][0], 2), cen_series(dc, "exam_age_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1))
             out.append(table_html(dc, [("century_l", t["century"], None), ("n_authors", t["authors"], ",.0f"), ("n_linked", ("연결" if ko else "linked"), ",.0f"), ("link_rate", ("연결률" if ko else "linkage"), ".1%"), ("n_ambiguous", ("동명 미확정" if ko else "ambiguous"), ",.0f"), ("exam_age_median", ("급제 연령 중앙값" if ko else "median age at passing"), ",.0f")], "t_d2", lang, filt=False))
             A = D.authors[D.authors.linked == 1].sort_values("exam_year")
             out.append("<h2 id=linked-authors>" + ("연결된 저자" if ko else "Linked authors") + "</h2>" + table_html(A, [("author_" + ("ko" if ko else "hj"), t["author"], None), ("birth", t["birth"], ".0f"), ("exam_year", ("시험년" if ko else "exam year"), ".0f"), ("exam_age", ("급제 연령" if ko else "age"), ".0f"), ("munkwa_bon", ("본관" if ko else "clan seat"), None), ("munkwa_rule", ("규칙" if ko else "rule"), None)], "t_d2a", lang))
         elif mid == "d3_pub_lag":
-            out.append(fig(lines([cen_series(dc, "pub_lag_median", lang, ("중앙값" if ko else "median"), 0), cen_series(dc, "pub_lag_p25", lang, Q_NAME[lang][0], 2), cen_series(dc, "pub_lag_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1), ("몰년에서 간행까지 햇수, 세기별." if ko else "Years from death to printing by century.")))
+            out.append(lfig([cen_series(dc, "pub_lag_median", lang, ("중앙값" if ko else "median"), 0), cen_series(dc, "pub_lag_p25", lang, Q_NAME[lang][0], 2), cen_series(dc, "pub_lag_p75", lang, Q_NAME[lang][1], 2)], ",.0f", xstep=1))
             out.append(table_html(dc, [("century_l", t["century"], None), ("n_collections", t["collections"], ",.0f"), ("pub_year_known", ("간행년 있음" if ko else "year known"), ",.0f"), ("pub_lag_median", ("중앙값" if ko else "median"), ",.0f"), ("pub_lag_p25", Q_NAME[lang][0], ",.0f"), ("pub_lag_p75", Q_NAME[lang][1], ",.0f")], "t_d3", lang, filt=False))
             dl = D.dcol.merge(D.col[["collection_id", "label_ko", "label_en"]], on="collection_id", how="left")
             out.append("<h2 id=by-collection>" + ("문집별" if ko else "By collection") + "</h2>" + table_html(dl, [("label_" + lang, t["title"], None), ("death", t["death"], ".0f"), ("pub_year", t["pub"], ".0f"), ("pub_lag", ("시차(년)" if ko else "lag (years)"), ",.0f")], "t_d3c", lang))
         elif mid in ("d4_translation", "d5_punct"):
             c = "translation_share" if mid == "d4_translation" else "punct_share"
-            out.append(fig(lines([cen_series(dc, c, lang, ("비율" if ko else "share"), 0)], ".0%", xstep=1), (("번역문 연계 편 비율, 세기별." if mid == "d4_translation" else "교감표점 연계 편 비율, 세기별.") if ko else ("Share of works linked to a translation, by century." if mid == "d4_translation" else "Share of works linked to a collated and punctuated edition, by century."))))
+            out.append(lfig([cen_series(dc, c, lang, ("비율" if ko else "share"), 0)], ".0%", xstep=1))
             cols = [("century_l", t["century"], None), ("n_collections", t["collections"], ",.0f"), ("n_works", t["works"], ",.0f"), (c, t["share"], ".1%")] + ([("collections_no_translation", ("번역 0건 문집" if ko else "no translation"), ",.0f"), ("collections_full_translation", ("전편 번역 문집" if ko else "fully translated"), ",.0f")] if mid == "d4_translation" else [])
             out.append(table_html(dc, cols, "t_d4", lang, filt=False))
-    if mid in ("b8_poem_length", "d3_pub_lag", "d2_munkwa"):   # 1.0.5: say what the two outer lines are
-        figs = [i for i, x in enumerate(out) if x.startswith("<figure")]
-        k_ = figs[1 if mid == "d2_munkwa" else 0]
-        out[k_] = out[k_].replace("</figcaption>", esc(Q_NOTE[lang]) + "</figcaption>", 1)
+    # 1.0.9: what the two outer lines are is now said in the notes of b8, d2 (second chart) and d3 (fig_notes.QUART_HOW)
     return "".join(out)
 
 
@@ -656,9 +681,13 @@ def metric_page(m, D, lang):
     body.append(f'<dt>{t["caveat"]}</dt><dd>{esc(L["caveat"])}</dd>')
     if "external" in m:
         body.append(f'<dt>{t["external"]}</dt><dd>{esc(m["external"][lang])}</dd>')
+    card, figs = reliability_card(m, D, lang), metric_figure(m, D, lang)
+    # 1.0.9: plain notes for the words of the definition, formula, caveats and card (XML, collection ids, 冊文類, 首 …)
+    seen = re.sub(r"<[^>]+>", " ", "".join(body) + card + re.sub(r"<figure>.*?</figure>", " ", figs, flags=re.S))
+    body.append(fn.body_words(seen, lang))
     body.append("</dl></div>")
-    body.append(reliability_card(m, D, lang))
-    body.append(metric_figure(m, D, lang))
+    body.append(card)
+    body.append(figs)
     body.append(f'<p class="files"><a href="../../data/{m["table"]}.csv">{t["download"]}: {m["table"]}.csv</a></p>')
     return page(lang, L["name"], "".join(body), depth=2, desc=L["definition"], active="metrics", rel=f"metrics/{m['id']}.html", leaf=metric_leaf(lang, m["id"]))
 
@@ -691,20 +720,22 @@ def collection_page(r, D, lang, is_person=False):
             f'<h1>{esc(title)}</h1><p class="lead">{esc(sub)}</p>']
     if is_person and cid in PAGE_TAKE:
         body.append(take_block(PAGE_TAKE[cid][lang], lang))
-    stats = [(t["works"], f"{int(r.n_works):,}"), (t["own"], f"{int(r.n_own_works):,}"), (t["chars"], f"{int(r.chars):,}"), (("주석 글자의 비율" if ko else "share of characters in notes"), f"{r.note_share:.1%}"),
+    stats = [(t["works"], f"{int(r.n_works):,}"), (t["own"], f"{int(r.n_own_works):,}"), (t["chars"], f"{int(r.chars):,}"), (("주석 글자의 비율" if ko else "share of characters in notes"), fmt(float(r.note_share), ".1%")),
              (("권 수(목차의 卷)" if ko else "fascicles (卷 headings)"), f"{int(r.n_gwon_titles)}"), (t["pub"], fmt(r.pub_year, ".0f") or "—")]
     # 1.0.5: one sentence under the title, filled with this collection's values
-    body.append("<p>" + esc((f"이 문집에는 글 {int(r.n_works):,}편이 실려 있고, 그 가운데 문집의 저자가 쓴 글(저자 글)이 {int(r.n_own_works):,}편({r.own_share:.1%})이다. 나머지는 남이 쓴 서문·발문·행장 같은 글이다."
-                             if ko else f"This collection holds {int(r.n_works):,} works, of which {int(r.n_own_works):,} ({r.own_share:.1%}) are by its author (own works); the rest are prefaces, postscripts, biographies and the like written by others.")) + "</p>")
+    nb = int(fn.C.get("blank_col", {}).get(cid, 0))   # 1.0.9 v1 (Codex 3.14): works with an empty writer tag are not others' works
+    body.append("<p>" + esc((f"이 문집에는 글 {int(r.n_works):,}편이 실려 있고, 그 가운데 문집의 저자가 쓴 글(저자 글)이 {int(r.n_own_works):,}편({fmt(float(r.own_share), '.1%')})이다. 나머지는 남이 쓴 서문·발문·행장 같은 글" + (f"과 필자 표지가 비어 있는 글({nb:,}편)" if nb else "") + "이다."
+                             if ko else f"This collection holds {int(r.n_works):,} works, of which {int(r.n_own_works):,} ({fmt(float(r.own_share), '.1%')}) are by its author (own works); the rest are prefaces, postscripts, biographies and the like written by others" + (f", and works with an empty writer tag ({nb:,})" if nb else "") + ".")) + "</p>")
     body.append('<div class="stats">' + "".join(f'<div class="stat"><div class="n">{v}</div><small>{k}</small></div>' for k, v in stats) + "</div>")
     # genre mix bars
     if bc is not None:
         items = [((GENRE_KO[g] if ko else GENRE_EN[g]), float(bc[f"share_works_{g}"]), 0) for g in GENRES]   # 1.0.5: one color — the colors carried no meaning
         lead = genre_lead({g: float(bc[f"share_works_{g}"]) for g in GENRES}, r.n_own_works, lang)
+        fig = fn.figx(svg_bars(items, ".1%", row_h=22, label_w=200, xlabel=("저자 글 가운데 그 갈래의 편 수 비율" if ko else "share of own works in the class, by number of works")),
+                      *fn.mix_notes({g: float(bc[f"share_works_{g}"]) for g in GENRES}, r.n_own_works, lead, lang, "collection"), lang)   # 1.0.9: the gloss of the seven classes is now the Terms paragraph
+        # 1.0.9 v1 (Codex 1.6): a collection with no own works has no chart; it keeps the gloss as in 1.0.8
         body.append("<h2 id=genre-mix>" + ("문체 구성(저자 글, 편 기준)" if ko else "Genre mix (own works, by works)") + "</h2>"
-                    + fig(svg_bars(items, ".1%", row_h=22, label_w=200, xlabel=("저자 글 가운데 그 갈래의 편 수 비율" if ko else "share of own works in the class, by number of works")),
-                          esc(lead) + (" 막대 하나가 갈래 하나다. 전체 문집 안에서의 자리는 아래 표와 지표 면에 있다." if ko else " One bar per class. The position among all collections is in the table below and on the metric pages."))
-                    + f"<p class='src'>{esc(GENRE_GLOSS[lang])}</p>")
+                    + (fig or f"<p class='src'>{esc(GENRE_GLOSS[lang])}</p>"))
     rows = []
     def pct(col_df, col, v):
         s = col_df[col].dropna()
@@ -721,8 +752,8 @@ def collection_page(r, D, lang, is_person=False):
                                        else "The percentile is the share of all collections with a smaller value: 70% means seven collections in ten are below this one.") + "</p>")
     if L is not None and L.n_letters > 0:
         rc = D.recip[D.recip.collection_id == cid]
-        body.append("<h2 id=letters>" + ("서간" if ko else "Letters") + "</h2><p>" + (f"저자의 서간 {int(L.n_letters):,}편, 제목 파싱 {L.parse_rate:.0%}, 수신자 문자열 고유 {int(L.n_unique):,}, 상위 3 점유 {fmt(L.top3_share, '.1%')}." if ko else
-                                                                       f"{int(L.n_letters):,} letters by the author; {L.parse_rate:.0%} of titles parsed; {int(L.n_unique):,} distinct addressee strings; top-3 share {fmt(L.top3_share, '.1%')}.") + "</p>")
+        body.append("<h2 id=letters>" + ("서간" if ko else "Letters") + "</h2><p>" + (f"저자의 서간 {int(L.n_letters):,}편, 제목 파싱 {fmt(float(L.parse_rate), '.0%')}, 수신자 문자열 고유 {int(L.n_unique):,}, 상위 3 점유 {fmt(L.top3_share, '.1%')}." if ko else
+                                                                       f"{int(L.n_letters):,} letters by the author; {fmt(float(L.parse_rate), '.0%')} of titles parsed; {int(L.n_unique):,} distinct addressee strings; top-3 share {fmt(L.top3_share, '.1%')}.") + "</p>")
         if len(rc):
             body.append(table_html(rc, [("recipient_raw", t["recipients"], None), ("n", t["letters"], ",.0f")], "t_rc", lang, filt=False))
     if E is not None and E.n_epitaphs > 0:
@@ -774,9 +805,8 @@ def century_page(c, D, lang):
                                 if ko else f"The {int(tot.n_collections):,} collection{'s' if int(tot.n_collections) != 1 else ''} of the {int(tot.n_authors):,} author{'s' if int(tot.n_authors) != 1 else ''} born in the {cl}: {int(tot.n_works):,} works."
                                 + (" With so few collections, the shares below are those of a handful of collections." if few else ""))) + "</p>")
     body.append("<h2 id=genre-mix>" + ("문체 구성(저자 글, 편 기준)" if ko else "Genre mix (own works, by works)") + "</h2>"
-                + fig(svg_bars(items, ".1%", row_h=22, label_w=200, xlabel=("저자 글 가운데 그 갈래의 편 수 비율" if ko else "share of own works in the class, by number of works")),
-                      esc(lead) + (" 이 세기에 태어난 저자의 글을 모두 합쳐 낸 비율이다." if ko else " Shares are computed over all works by authors born in this century."))
-                + f"<p class='src'>{esc(GENRE_GLOSS[lang])}</p>")
+                + fn.figx(svg_bars(items, ".1%", row_h=22, label_w=200, xlabel=("저자 글 가운데 그 갈래의 편 수 비율" if ko else "share of own works in the class, by number of works")),
+                          *fn.mix_notes({g: float(b.loc[g, "share_works"]) for g in GENRES}, n_own, lead, lang, "century", few=few), lang))
     body.append("<h2 id=collections>" + ("이 세기 출생 저자의 문집" if ko else "Collections by authors born in this century") + "</h2>")
     out = ['<div class="wrap"><table class="sort fixed"><thead><tr><th>' + cap(t["title"], lang) + "</th><th>" + cap(t["author"], lang) + "</th><th>" + cap(t["birth"], lang) + f'</th><th class="num">{cap(t["works"], lang)}</th><th class="num">{cap(t["chars"], lang)}</th></tr></thead><tbody>']
     for _, r in cols.iterrows():
@@ -790,7 +820,7 @@ def centuries_index(D, lang):
     t = T[lang]; ko = lang == "ko"
     tot = D.tot.reset_index(); tot = tot[tot.birth_century.notna()]
     body = [f"<h1>{t['century_list']}</h1>", '<p class="src">' + ("세기는 저자 생년 기준이다. 간행은 대개 그보다 늦다." if ko else "Centuries follow the author's birth year; printing usually came later.") + "</p>",
-            fig(svg_bars([(century_label(r.birth_century, lang), float(r.n_collections), 0) for _, r in tot.iterrows()], ",.0f", row_h=22, label_w=160, xlabel=t["collections"]), ("세기별 문집 수." if ko else "Collections per century.")), "<div class='cards'>"]
+            fn.figx(svg_bars([(century_label(r.birth_century, lang), float(r.n_collections), 0) for _, r in tot.iterrows()], ",.0f", row_h=22, label_w=160, xlabel=t["collections"]), *fn.century_bar_notes("collections", lang), lang), "<div class='cards'>"]
     for _, r in tot.iterrows():
         c = int(r.birth_century)
         body.append(f'<a class="card s-A" href="{c}.html"><b>{esc(century_label(c, lang))}</b><small>{int(r.n_collections):,} {t["collections"]} · {int(r.n_authors):,} {t["authors"]} · {int(r.n_works):,} {t["works"]}</small></a>')
@@ -817,8 +847,8 @@ def home(D, lang):
     stats = [(f"{len(D.col):,}", ("문집" if ko else "collections"), "collections/index.html"),
              (f"{int(D.col.n_works.sum()):,}", ("편" if ko else "works"), "metrics/a1_works.html"),
              (f"{D.col.chars.sum()/1e6:.0f}M", ("한자" if ko else "characters"), "metrics/a2_chars.html"),
-             (f"{poetry:.0%}", ("저자 글 중 시" if ko else "of authors' own works are poetry"), "metrics/b1_poetry_share.html"),
-             (f"{D.authors.linked.mean():.0%}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the exam roster"), "metrics/d2_munkwa.html")]
+             (f"{fmt(float(poetry), '.0%')}", ("저자 글 중 시" if ko else "of authors' own works are poetry"), "metrics/b1_poetry_share.html"),
+             (f"{fmt(float(D.authors.linked.mean()), '.0%')}", ("저자 중 문과방목에 연결" if ko else "of authors linked to the exam roster"), "metrics/d2_munkwa.html")]
     scope = ("범위는 공공데이터포털 한국문집총간 목록 1,251항목 중 채택한 1,249종(정편 663·속편 586)이다. 번역문·한국고전종합DB 웹 콘텐츠는 쓰지 않았고, 원문 전문은 싣지 않는다 — 편마다 고전종합DB 로 연결한다. 세기는 저자 생년 기준이다."
              if ko else
              "Scope: 1,249 collections (first series 663, supplement 586) adopted from the 1,251 Hanguk munjip chonggan entries on data.go.kr. Translations and the ITKC website content are not used, and no full text is reproduced; each work links to the ITKC database. Centuries follow the author's birth year.")
@@ -848,7 +878,7 @@ def home(D, lang):
                 body.append(f'<a class="card s-{s}" href="metrics/{m["id"]}.html"><b>{esc(m[lang]["name"])}</b><span class="kv">{esc(hv)}<small>{esc(hl)}</small></span><small>{esc(tk)}</small></a>')
         body.append("</div>")
     tot = D.tot.reset_index(); tot = tot[tot.birth_century.notna()]
-    body.append("<h2 id=centuries>" + t["century_list"] + "</h2>" + fig(svg_bars([(century_label(r.birth_century, lang), float(r.n_works), 0) for _, r in tot.iterrows()], ",.0f", row_h=20, label_w=160), ("세기별 편 수. 세기는 저자가 태어난 해로 나눴다(글을 쓴 해가 아니다). 각 세기 면은 「세기」 메뉴." if ko else "Works per century; see the Centuries menu.")))
+    body.append("<h2 id=centuries>" + t["century_list"] + "</h2>" + fn.figx(svg_bars([(century_label(r.birth_century, lang), float(r.n_works), 0) for _, r in tot.iterrows()], ",.0f", row_h=20, label_w=160, xlabel=t["works"]), *fn.century_bar_notes("works", lang), lang))
     return page(lang, t["site"], "".join(body), depth=1, active="home")
 
 
@@ -887,24 +917,24 @@ def method_page(D, lang):
         secs.append("<h2 id=genres>문체</h2><p>고전번역원이 편마다 붙인 문체분류(대분류 7·중분류 28)를 그대로 쓴다. 사이트가 분류를 고치거나 보태지 않았다. 분류의 품질은 기타류 잔여율(B7)로 보이고, 표본 300편의 제목(필요하면 본문 첫머리)을 보고 그 분류가 맞는지 판정한 비율을 신뢰도 카드에 적는다(이 비율은 조사한 300편의 결과로, 시 · 잡저 전체의 분류 품질을 추정하는 근거로 쓸 수 없다 — 표본 구성의 한계는 카드에)(1.0 에서 진행 중이면 그렇게 표시).</p>")
         secs.append("<h2 id=centuries>세기</h2><p>XML 에 편 단위 연대가 없어 모든 시계열은 저자 생년의 세기로 묶는다. 저자 활동기와 간행 사이에는 약 1세기의 시차가 있다(곽지은 2026; 간행 시차 D3). 생년이 없는 저자의 문집은 세기 표에서 「생년 미상」 행에 둔다.</p>")
         secs.append("<h2 id=merging-authors>저자 묶기</h2><p>저자 ID 는 한자성명 + 생년이다. 같은 저자의 여러 문집(본집·속집·유고)은 저자 표에서 합산하고 문집 수를 열로 보인다. 필자가 저자와 다른 편(서문·발문·행장·만사·부록)은 저자 저작량에서 뺀다. 같은 이름·같은 생년의 다른 사람은 구별하지 못한다 — 발견되면 overrides 로 고친다.</p>")
-        secs.append("<h2 id=person-linkage>인물 연결</h2><p>문과방목 연결 규칙은 M1 성명+생년 일치(중시·발영시로 여러 행이면 첫 급제), M2 성명 일치·방목 생년 없음·자 또는 호 일치, M3 성명 일치·후보 하나·시험년이 생애 안. 둘 이상 남으면 미확정(AMB)으로 두고 연결하지 않는다. 연결률은 급제율이 아니다. 한국역대인명정보는 성명+생년(P1) 또는 성명+호(P2)로 연결해 몰년 일치율만 본다.</p>")
+        secs.append("<h2 id=person-linkage>인물 연결</h2><p>문과방목 연결 규칙은 이 순서로 적용하고, 앞 규칙에 걸리면 뒤 규칙은 보지 않는다. M1 성명+생년 일치(생년이 같은 행이 여럿이면, 본관이 모두 같을 때는 중시·발영시 등으로 여러 번 오른 한 사람으로 보고 첫 급제 = M1-first, 본관이 다를 때는 미확정으로 두고 M2·M3 으로 넘어가지 않는다), M2 성명 일치·방목 생년 없음·자 또는 호 일치(둘 이상이면 미확정), M3 저자 생년이 있을 때 성명 일치·후보 하나·방목 생년 없음·시험년이 생년+15년부터 몰년(없으면 생년+70년) 사이(성명 일치 후보가 여럿이고 그 가운데 시험년이 이 범위에 드는 후보가 둘 이상이면 미확정). 미확정(AMB)은 연결하지 않는다. 연결률은 급제율이 아니다. 한국역대인명정보는 성명+생년(P1) 또는 성명+호(P2)로 연결해 몰년 일치율만 본다.</p>")
         secs.append("<h2 id=relationship-genres>관계 문체</h2><p>서간 수신자는 제목이 答·與·上·寄·復·報·奉·呈·贈·簡·謝 로 시작할 때 그 뒤부터 書·簡·問目·別紙·狀 등 앞까지의 문자열이고, 비지·행장 피장자는 墓誌銘·墓碣銘·神道碑·行狀 등 앞의 문자열(贈·故·先考 등 머리말 제거)이다. 1.0 은 문자열을 사람으로 합치지 않는다 — 자·호·관직으로 달리 불린 같은 사람은 다른 수신자로 센다. 파싱 정밀도는 표본으로 잰다.</p>")
         secs.append("<h2 id=limits>알려진 한계</h2><ul><li>XML 의 결함(페이지 번호 불일치·추가·누락·이미지와 한자 불일치, 최지연 외 2021)은 고치지 않았다. 면 번호는 지표로 쓰지 않는다.</li><li>「편」의 크기는 편집진의 결정이다. 연작시가 한 편으로 묶인 곳에서는 편 기준 비중이 글자 기준과 달라진다.</li><li>고유명사 태그는 문집마다 밀도가 달라(0~100%) 어떤 지표에도 쓰지 않았다.</li><li>생년 없는 저자 8명(841편, 저자 글 709)은 A·B 계열 세기 표에 「생년 미상」 행으로 따로 있고, C·D 계열 세기 표에는 없다(그 표의 합은 생년 있는 저자만). 지표 머리의 전체 값(저자 1,248·편 637,203·저자 글 609,494)에는 들어간다.</li><li>『호음잡고』(ITKC_MO_0126A)의 冊文類 284편은 제목이 시다(고전번역원 분류의 덩어리 오류). 분류를 고치지 않고 그대로 센 뒤 B 계열 신뢰도 카드에 적었다. 문체분류가 없는 편 88(속편 후반 5종)은 「미분류」로 분모에만 들어간다.</li><li>번역문·교감표점 연계는 2024-08 자 XML 의 태그이며 사업 현황과 다를 수 있다.</li><li>해석은 하지 않는다. 저자·학파를 평가하는 서술은 없다.</li></ul>")
         secs.append("<h2 id=reproduction>재현</h2><p>GitHub 저장소의 src/ 에 수집(fetch_itkc.py)·작품 테이블(build_works.py)·검산(check_works.py)·저자 연결(link_authors.py)·지표(metrics_a~d.py)·신뢰도(reliability.py)·사이트(build_site.py) 코드가 있다. 포털 파일 이력은 1,251항목, 내려받은 첨부는 1,250건(운암집 1건은 첨부 없음), 채택한 문집 zip 은 1,249건(구 스키마 중복 1건 제외)이며 그 SHA-256 이 raw_manifest.json 에 있다.</p>")
         secs.append("<h2 id=romanization>로마자</h2><p>문집명과 인물 이름은 국어의 로마자 표기법(2000)을 따르되, 성 김·이는 관용 표기 Kim·Yi로 적는다.</p>")
-        secs.append(f"<h2 id=versions>판</h2><ul><li>1.0.8 (2026-11-19) — 화면만 고쳤다. 헤더가 화면 위에 붙지 않는 폭(1024px 아래)에서 아래로 내려가도 언어를 바꿀 수 있게, 오른쪽 아래에 언어 전환 단추를 띄운다. 값은 바뀌지 않았다.</li><li>1.0.7 (2026-11-18) — 목차에서 절로 바로 가기. 절이 셋 이상인 면에 절 목록을 두고, 절 제목마다 바로가기 링크를 달았다. 넓은 화면에서는 위쪽 메뉴가 화면에 남는다. 본문과 수치는 그대로다.</li><li>1.0.6 (2026-11-17) — 시 · 서간 · 공거 · 서발 비중의 세기별 그림을, 세기마다 엇갈리던 선 셋 대신 같은 세로 눈금의 작은 그림 셋(편 기준 · 글자 기준 · 타인 글 포함)으로 바꿨다. 값과 마우스를 올리면 보이는 수는 그대로다. 지표 면에 코딩 · 블라인드 · 95% 구간 · 윌슨 · 정밀도 · 재현율 · 층화 표본 · 파싱 · HHI 가 나오면 신뢰도 카드 끝에 그 낱말의 짧은 풀이를, 방법 면과 읽기용 판 끝에 낱말 풀이 절을 두었다(실록 메트릭스와 같은 문안). 문체 분류 품질의 설명을 바로잡았다 — 코더는 고전번역원 분류를 보고 그것이 제목과 맞는지 판정했으므로 「블라인드 코딩」이 아니었다(블라인드는 30편 재판정에만 해당). 그 300편 표본은 추출 코드가 칸을 차례로 채우다 300편에서 끊는 바람에 시 · 잡저가 거의 들지 못했다는 것을 카드에 적었다(대분류 × 세기 「층화 표본」이라는 말도 뺐다). 표의 값과 데이터 값은 바뀌지 않았다.</li><li>1.0.5 (2026-11-15) — 그래프 설명을 보강했다. 세기별 선 그림에 두 축의 이름을 적고, 읽는 법(점 하나가 무엇인지, 선이 끊긴 세기, 문집이 적은 세기)을 그림 앞에 두었다. 사분위 선의 이름을 풀어 썼다. 문집 면과 세기 면 머리에 그 면의 값으로 채운 한 문장을 두고, 문체 구성 그림에 결론 한 줄과 일곱 갈래의 풀이를 붙였다(세기 면의 그림에는 캡션이 없었다). 뜻 없이 갈래마다 달랐던 막대 색을 한 가지로 했다. 비율 상위 30 그림에는 거기 실린 문집의 크기를 적었다. 좁은 화면에서는 넓은 그림을 줄이지 않고 옆으로 넘겨 본다. 표의 값과 데이터 파일은 바뀌지 않았다.</li><li>1.0.4 (2026-11-15) — 그림을 고쳤다. 세기별 선 그래프가 문집이 없는 10 · 11세기를 이어 그리던 것을 끊고, 9세기처럼 홀로 남은 값은 점으로 그린다. 시 비중 상위 30 막대는 비중이 100%인 문집이 30종보다 많아 그 가운데 30종이 파일 순서로 그려지고 있었다 — 저자 글이 많은 순으로 그리고 그 수를 설명에 적었다. 선 끝의 계열 이름을 띄우고 긴 이름이 잘리지 않게 여백을 넓혔다. 표의 값은 바뀌지 않았다.</li><li>1.0.3 (2026-11-07) — 탐색 개선: 지표 면과 인물 면에 위치 표시줄, 같은 계열 목록, 이전·다음 링크(←/→ 키)를 넣었다. 지표는 계열 순, 인물 면은 생년 순. 내용·수치 변화 없음.</li><li>1.0.2 (2026-11-04) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
+        secs.append(f"<h2 id=versions>판</h2><ul><li>1.0.9 (2026-11-25) — 그림 설명을 풀어 썼다. 그림마다 위에 무엇을 그린 그림인지 한 줄을 두고, 아래에 「한눈에」 「그림 보는 법」 「숫자 하나 읽어 보기」 「잘못 읽기 쉬운 것」을 붙였다(설명 속 수는 자료에서 계산해 넣었다). 서간 수신자 지표에는 면 머리의 문집별 합계와 전체에서 서로 다른 문자열 수가 어떻게 다른지 적었다. 지표 면에는 정의·공식·한계에 나오는 낱말(XML, 문집 번호, 冊文類, 首, 비가중, 서간 제목의 한자 등)의 풀이를, 그림 아래에는 해당하는 곳에 「낱말 풀이」를 붙였다(첫 면과 세기 목록의 그림에는 없다). 첫 면 막대 그림에 값 축 이름(편)을 적고 그만큼 그림 높이를 늘렸다. 필자 표지가 빈 글을 어떻게 세는지 적었다 — 타인 필자 표지 지표에서 그런 글은 편 수에는 들고 표지 수에는 들지 않는다. 이 지표의 이름과 단위를 「타인 필자 표지 수」·문자열로 바꾸고 그 표의 머리 이름도 「저자 글로 분류되지 않은 편」·「필자 표지」로 고쳤다(사람 수가 아니다. 표의 값은 그대로다). 문과방목 연결 규칙은 적용 순서를 적었고, 간행 시차의 공식은 간행년과 몰년이 모두 있는 문집만 센다고 바로 적었다. 가장 큰 값이 마지막 눈금을 넘던 그림은 눈금을 하나 더 그어 값까지 닿게 했다(막대·선의 값은 그대로이고, 선 끝의 이름도 새 눈금에 맞춰 자리를 옮겼다). 문집 면 문체 구성 그림의 한 줄 요약과 문집 면 머리 문장 등 본문에 적힌 백분율을 표·툴팁과 같은 반올림(반올림 자리의 5는 올림)으로 맞췄다 — 이전에는 81.25%를 81.2%로 적는 식으로 0.1%포인트 어긋난 곳이 있었다. 저자 글이 없어 그림이 없는 문집 면에는 일곱 갈래 풀이를 그대로 두었다. 그림의 접근성 이름(화면 읽기 프로그램이 읽는 이름)을 그림 위 한 줄로 바꿨다. 데이터 파일의 값은 바뀌지 않았다.</li><li>1.0.8 (2026-11-19) — 화면만 고쳤다. 헤더가 화면 위에 붙지 않는 폭(1024px 아래)에서 아래로 내려가도 언어를 바꿀 수 있게, 오른쪽 아래에 언어 전환 단추를 띄운다. 값은 바뀌지 않았다.</li><li>1.0.7 (2026-11-18) — 목차에서 절로 바로 가기. 절이 셋 이상인 면에 절 목록을 두고, 절 제목마다 바로가기 링크를 달았다. 넓은 화면에서는 위쪽 메뉴가 화면에 남는다. 본문과 수치는 그대로다.</li><li>1.0.6 (2026-11-17) — 시 · 서간 · 공거 · 서발 비중의 세기별 그림을, 세기마다 엇갈리던 선 셋 대신 같은 세로 눈금의 작은 그림 셋(편 기준 · 글자 기준 · 타인 글 포함)으로 바꿨다. 값과 마우스를 올리면 보이는 수는 그대로다. 지표 면에 코딩 · 블라인드 · 95% 구간 · 윌슨 · 정밀도 · 재현율 · 층화 표본 · 파싱 · HHI 가 나오면 신뢰도 카드 끝에 그 낱말의 짧은 풀이를, 방법 면과 읽기용 판 끝에 낱말 풀이 절을 두었다(실록 메트릭스와 같은 문안). 문체 분류 품질의 설명을 바로잡았다 — 코더는 고전번역원 분류를 보고 그것이 제목과 맞는지 판정했으므로 「블라인드 코딩」이 아니었다(블라인드는 30편 재판정에만 해당). 그 300편 표본은 추출 코드가 칸을 차례로 채우다 300편에서 끊는 바람에 시 · 잡저가 거의 들지 못했다는 것을 카드에 적었다(대분류 × 세기 「층화 표본」이라는 말도 뺐다). 표의 값과 데이터 값은 바뀌지 않았다.</li><li>1.0.5 (2026-11-15) — 그래프 설명을 보강했다. 세기별 선 그림에 두 축의 이름을 적고, 읽는 법(점 하나가 무엇인지, 선이 끊긴 세기, 문집이 적은 세기)을 그림 앞에 두었다. 사분위 선의 이름을 풀어 썼다. 문집 면과 세기 면 머리에 그 면의 값으로 채운 한 문장을 두고, 문체 구성 그림에 결론 한 줄과 일곱 갈래의 풀이를 붙였다(세기 면의 그림에는 캡션이 없었다). 뜻 없이 갈래마다 달랐던 막대 색을 한 가지로 했다. 비율 상위 30 그림에는 거기 실린 문집의 크기를 적었다. 좁은 화면에서는 넓은 그림을 줄이지 않고 옆으로 넘겨 본다. 표의 값과 데이터 파일은 바뀌지 않았다.</li><li>1.0.4 (2026-11-15) — 그림을 고쳤다. 세기별 선 그래프가 문집이 없는 10 · 11세기를 이어 그리던 것을 끊고, 9세기처럼 홀로 남은 값은 점으로 그린다. 시 비중 상위 30 막대는 비중이 100%인 문집이 30종보다 많아 그 가운데 30종이 파일 순서로 그려지고 있었다 — 저자 글이 많은 순으로 그리고 그 수를 설명에 적었다. 선 끝의 계열 이름을 띄우고 긴 이름이 잘리지 않게 여백을 넓혔다. 표의 값은 바뀌지 않았다.</li><li>1.0.3 (2026-11-07) — 탐색 개선: 지표 면과 인물 면에 위치 표시줄, 같은 계열 목록, 이전·다음 링크(←/→ 키)를 넣었다. 지표는 계열 순, 인물 면은 생년 순. 내용·수치 변화 없음.</li><li>1.0.2 (2026-11-04) — 번역문 연계 지표(D4)의 외부 대조 문구를 고치고 로마자 규칙을 적었다. 수치 변화 없음.</li><li>1.0.1 (2026-11-04) — 문집 면의 저자 절 복구, 언어 전환 링크가 같은 면으로 가도록 수정, 한국어·영어 문구와 표기 정리. 수치 변화 없음.</li><li>1.0 (2026-11-03) — 첫 공개.</li></ul>")
     else:
         secs.append(f"<h1>Method and limits</h1><h2 id=sources>Sources</h2><p>{esc(SOURCES['itkc_munjip']['en'])}</p><p>{esc(SOURCES['aks_munkwa']['en'])} {esc(SOURCES['aks_persons']['en'])}</p>")
         secs.append(f"<h2 id=units>Unit of counting</h2><p>Every number is counted per <b>work</b>: one level element of type=\"최종정보\" in the ITKC XML. Of {int(D.col.n_works.sum()):,} works, {int(D.col.n_own_works.sum()):,} are by the collection's author (writer name equals the bibliographic author). Characters are CJK code points inside <내용>; those inside original, collation and marginal notes are counted separately as note characters. Check: for all {n_match} collections the count equals an independent recount of every <내용> in the raw XML; zero residual character references.</p>")
         secs.append("<h2 id=genres>Genres</h2><p>The genre classification the ITKC attached to each work (7 major, 28 minor classes) is used as given; nothing was corrected or added. Classification quality is shown by the residual 'other' share (B7) and by the share of a 300-work sample judged, from the title (and the opening of the text where needed), to fit its class, reported on the reliability card (the rate is the result for the 300 works examined and cannot be used to estimate classification quality across poetry or miscellany; the sample's limits are on the card) (marked as in progress where not yet done in 1.0).</p>")
         secs.append("<h2 id=centuries>Centuries</h2><p>The XML carries no date per work, so every time series is grouped by the author's birth century. Printing lags the author's active years by about a century (Kwak 2026; publication lag D3). Collections whose author has no birth year sit in a 'birth year unknown' row.</p>")
         secs.append("<h2 id=merging-authors>Merging authors</h2><p>The author id is the Chinese-character name plus the birth year. Several collections by one author (main collection, continuation, posthumous works) are summed in the author table with the number of collections shown. Works whose writer differs from the author (prefaces, postscripts, biographies, elegies, appendices) are excluded from the author's output. Two different people sharing a name and birth year cannot be told apart; such cases are corrected through overrides when found.</p>")
-        secs.append("<h2 id=person-linkage>Person linkage</h2><p>Examination-roster rules: M1 same name and birth year (first pass when a person is listed for re-examinations), M2 same name, roster birth absent, courtesy or pen name identical, M3 same name, a single candidate, examination year within the lifetime. Where more than one candidate survives the author stays unlinked (AMB). Linkage is not a pass rate. The AKS person database is matched by name and birth year (P1) or name and pen name (P2) and used only to check death years.</p>")
+        secs.append("<h2 id=person-linkage>Person linkage</h2><p>Examination-roster rules, applied in this order (once one applies, the later ones are not tried): M1 same name and birth year (where several such rows share one clan seat they are one person listed for re-examinations and the first pass is used = M1-first; where their clan seats differ the author is left unresolved and M2 and M3 are not tried), M2 same name, roster birth absent, courtesy or pen name identical (more than one: unresolved), M3 when the author's birth year is known: same name, a single candidate, roster birth absent, examination year from birth + 15 to death (birth + 70 if no death year) (if there are several same-name candidates and more than one falls in that window: unresolved). Unresolved authors (AMB) stay unlinked. Linkage is not a pass rate. The AKS person database is matched by name and birth year (P1) or name and pen name (P2) and used only to check death years.</p>")
         secs.append("<h2 id=relationship-genres>Relationship genres</h2><p>A letter's addressee is the string after an opening 答·與·上·寄·復·報·奉·呈·贈·簡·謝 up to 書·簡·問目·別紙·狀 etc.; an epitaph's subject is the string before 墓誌銘·墓碣銘·神道碑·行狀 etc. with honorific prefixes removed. Version 1.0 does not merge strings into persons: the same person named by courtesy name, pen name or office counts as different addressees. Parsing precision is measured on a sample.</p>")
         secs.append("<h2 id=limits>Known limits</h2><ul><li>Defects of the XML (page-number mismatches, additions, omissions, characters differing from the page images; Choi et al. 2021) were not corrected; page numbers are not used in any metric.</li><li>The size of a 'work' is an editorial decision; where poem cycles are bundled, work-based shares diverge from character-based ones.</li><li>Named-entity tags vary in density from 0 to 100% between collections and are not used in any metric.</li><li>The 8 authors without a birth year (841 works, 709 own) appear as a separate 'birth year unknown' row in the series A and B century tables and are absent from the series C and D century tables (whose sums cover dated authors only); the headline totals (1,248 authors, 637,203 works, 609,494 own works) include them.</li><li>284 works of the Hoeum japgo (ITKC_MO_0126A) filed under 冊文類 carry poem titles — a block error in the ITKC classification. They are counted as classified and noted on the series B reliability cards. 88 works without a genre class (five late supplement collections) enter denominators only.</li><li>Translation and collation links are tags of the 2024-08 XML and may differ from the current state of the programs.</li><li>No interpretation is offered; no author or school is evaluated.</li></ul>")
         secs.append("<h2 id=reproduction>Reproduction</h2><p>The GitHub repository's src/ holds the fetcher (fetch_itkc.py), work table (build_works.py), checks (check_works.py), author linkage (link_authors.py), metrics (metrics_a–d.py), reliability (reliability.py) and site (build_site.py). The portal lists 1,251 entries; 1,250 attachments were downloaded (one entry has none) and 1,249 archives adopted (one old-schema duplicate excluded); their SHA-256 digests are in raw_manifest.json.</p>")
         secs.append("<h2 id=romanization>Romanization</h2><p>Collection titles and personal names follow the Revised Romanization of Korean (2000); the surnames 김 and 이 are given in their customary forms, Kim and Yi.</p>")
-        secs.append(f"<h2 id=versions>Versions</h2><ul><li>1.0.8 (2026-11-19) — Display only. At widths where the header does not stay on screen (below 1024px) a language switch now floats at the bottom right, so the language can be changed further down the page. No values changed.</li><li>1.0.7 (2026-11-18) — Straight from the contents to a section: a section list on pages with three or more sections, and a link on every section heading. On wide screens the top menu stays on screen. Text and numbers are unchanged.</li><li>1.0.6 (2026-11-17) — The by-century charts of the poetry, letters, court-document and preface shares now show three small charts on one vertical scale (by works, by characters, incl. others) instead of three lines that crossed from century to century. The values and the numbers shown on hover are unchanged. Where a metric page uses coding, blind, 95% interval, Wilson, precision, recall, stratified sample, parsing or HHI, a short note on those words ends the card, and the Method page and the reading edition end with a section of the same notes (worded as on Sillok Metrics). The note on genre classification quality is corrected: the coders saw the ITKC class and judged whether it fits the title, so it was not a blind coding (only the 30-work re-judgment was blind). The card now also says that this 300-work sample barely reaches poetry and miscellany, because the sampler filled the class × century cells in order and stopped at 300 (the words 'stratified sample' are dropped). No table value or data value changed.</li><li>1.0.5 (2026-11-15) — Chart explanations filled in. The by-century line charts name both axes, and a note before the charts says what a point is, at which centuries the line breaks and which centuries have few collections. The quartile lines are named in words. Collection pages and century pages open with a sentence filled with that page's values, and the genre-mix chart carries a one-line conclusion and a gloss of the seven classes (the chart on the century pages had no caption). The bar colors, which differed by class without meaning, are now one color. Top-30 charts of a share say how large the collections shown are. On narrow screens wide charts scroll sideways instead of shrinking. No table value or data file changed.</li><li>1.0.4 (2026-11-15) — Figures corrected. The by-century line charts joined points across the 10th and 11th centuries, which have no collection; the lines now stop there, and a value left on its own, such as the 9th century, is drawn as a dot. In the top-30 bars for the poetry share, more than thirty collections have a share of 100% and thirty of them were drawn in file order; they are now ordered by the number of own works, and the caption gives the count. Series names at the line ends are spaced apart, with a wider margin so that long names are not cut off. No value in any table changed.</li><li>1.0.3 (2026-11-07) — Navigation: metric and person pages now have a breadcrumb, a list of pages in the same series and previous/next links (← and → keys); metrics follow series order, person pages birth order. No content or numbers changed.</li><li>1.0.2 (2026-11-04) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
+        secs.append(f"<h2 id=versions>Versions</h2><ul><li>1.0.9 (2026-11-25) — Chart explanations written out. Every chart now has a line above it saying what it draws and, below it, In short, How the chart works, Reading one value and Easy to misread (the numbers in them are computed from the data). The addressee metric says how the per-collection sum at the top of the page differs from the number of distinct strings across all collections. Metric pages gloss the words of their definitions, formulas and caveats (XML, collection numbers, 冊文類, 首, unweighted, the characters of letter titles and others), and a Terms paragraph follows the charts where it applies (not on the home page or the century list). The home-page bar charts name their value axis (works) and are a little taller for it. The notes say how works with an empty writer tag are counted: in the other-writer metric they count in the works but not in the tags, and that metric is renamed 'Other-writer tags', counted in strings (not people), with its table headers changed to match (table values unchanged). The examination-roster rules now state their order, and the publication-lag formula says it counts only collections with both a publication year and a death year. Charts whose largest value ran past the last tick get one more tick so the scale reaches it (bar and line values unchanged; the series names at the line ends move with the new scale). Percentages written in the text, such as the one-line summary of the genre-mix chart and the opening sentence of collection pages, now use the same rounding as the tables and tooltips (a 5 in the rounding place rounds up); before, a value such as 81.25% could read 81.2% in the text and 81.3% on hover. Collection pages with no own works, and so no chart, keep the gloss of the seven classes. Each chart's accessible name (read by screen readers) is now the line above it. No data value changed.</li><li>1.0.8 (2026-11-19) — Display only. At widths where the header does not stay on screen (below 1024px) a language switch now floats at the bottom right, so the language can be changed further down the page. No values changed.</li><li>1.0.7 (2026-11-18) — Straight from the contents to a section: a section list on pages with three or more sections, and a link on every section heading. On wide screens the top menu stays on screen. Text and numbers are unchanged.</li><li>1.0.6 (2026-11-17) — The by-century charts of the poetry, letters, court-document and preface shares now show three small charts on one vertical scale (by works, by characters, incl. others) instead of three lines that crossed from century to century. The values and the numbers shown on hover are unchanged. Where a metric page uses coding, blind, 95% interval, Wilson, precision, recall, stratified sample, parsing or HHI, a short note on those words ends the card, and the Method page and the reading edition end with a section of the same notes (worded as on Sillok Metrics). The note on genre classification quality is corrected: the coders saw the ITKC class and judged whether it fits the title, so it was not a blind coding (only the 30-work re-judgment was blind). The card now also says that this 300-work sample barely reaches poetry and miscellany, because the sampler filled the class × century cells in order and stopped at 300 (the words 'stratified sample' are dropped). No table value or data value changed.</li><li>1.0.5 (2026-11-15) — Chart explanations filled in. The by-century line charts name both axes, and a note before the charts says what a point is, at which centuries the line breaks and which centuries have few collections. The quartile lines are named in words. Collection pages and century pages open with a sentence filled with that page's values, and the genre-mix chart carries a one-line conclusion and a gloss of the seven classes (the chart on the century pages had no caption). The bar colors, which differed by class without meaning, are now one color. Top-30 charts of a share say how large the collections shown are. On narrow screens wide charts scroll sideways instead of shrinking. No table value or data file changed.</li><li>1.0.4 (2026-11-15) — Figures corrected. The by-century line charts joined points across the 10th and 11th centuries, which have no collection; the lines now stop there, and a value left on its own, such as the 9th century, is drawn as a dot. In the top-30 bars for the poetry share, more than thirty collections have a share of 100% and thirty of them were drawn in file order; they are now ordered by the number of own works, and the caption gives the count. Series names at the line ends are spaced apart, with a wider margin so that long names are not cut off. No value in any table changed.</li><li>1.0.3 (2026-11-07) — Navigation: metric and person pages now have a breadcrumb, a list of pages in the same series and previous/next links (← and → keys); metrics follow series order, person pages birth order. No content or numbers changed.</li><li>1.0.2 (2026-11-04) — external-check wording of the linked-translation metric (D4) revised; romanization rule stated. No numbers changed.</li><li>1.0.1 (2026-11-04) — author section restored on collection pages, language switch now opens the same page, wording and notation fixes in both languages. No numbers changed.</li><li>1.0 (2026-11-03) — first release.</li></ul>")
     return page(lang, t["nav_method"], "".join(secs), depth=1, active="method", rel="method.html")
 
 
@@ -939,6 +969,7 @@ def main():
     d = (root / x.derived) if not Path(x.derived).is_absolute() else Path(x.derived)
     out = (root / x.out) if not Path(x.out).is_absolute() else Path(x.out)
     D = Data(d)
+    fn.setup(D, century_label, GENRES, GENRE_KO, GENRE_EN, GENRE_GLOSS)   # 1.0.9
     if out.exists():
         shutil.rmtree(out)
     (out / "data").mkdir(parents=True)
@@ -947,7 +978,8 @@ def main():
         if not (d / base).exists():
             continue
         if base in GZIP:
-            with open(d / base, "rb") as fi, gzip.open(out / "data" / f, "wb", compresslevel=9) as fo:
+            # 1.0.9: header time fixed (mtime=0), so a rebuild writes the same bytes; the file name in the header is as before
+            with open(d / base, "rb") as fi, open(out / "data" / f, "wb") as raw, gzip.GzipFile(filename=str(out / "data" / f), mode="wb", compresslevel=9, fileobj=raw, mtime=0) as fo:
                 shutil.copyfileobj(fi, fo)
         else:
             shutil.copy(d / base, out / "data" / f)

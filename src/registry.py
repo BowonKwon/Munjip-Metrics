@@ -18,7 +18,7 @@ Fields
 SITE = {
     "ko": {"title": "문집 메트릭스", "subtitle": "한국문집총간 1,249종을 편 단위로 센 수치와, 수치마다 붙인 신뢰도"},
     "en": {"title": "Munjip Metrics", "subtitle": "Korean literary collections (Hanguk munjip chonggan) counted work by work, with a reliability card on every number"},
-    "version": "1.0.8",
+    "version": "1.0.9",
 }
 
 SERIES = {
@@ -125,9 +125,9 @@ METRICS = [
     # ---------------- B genres
     dict(id="b1_poetry_share", series="B", table="b_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="시 비중", definition="저자 글(저자 자신이 쓴 편) 가운데 詩類의 비율. 편 기준과 글자 기준을 함께 보인다. 이 사이트의 대표 지표다.",
-                 formula="詩類 편 / 저자 글 (세기별); 詩類 글자 / 저자 글자", reading="", caveat="고전번역원 분류를 그대로 쓴다(부·사는 詩類 안의 중분류). 편 단위가 「十首」 묶음인 경우 편 기준 비중은 낮아지고 글자 기준은 그렇지 않다."),
+                 formula="詩類 편 / 저자 글 (세기별); 詩類 글자 / 저자 글자", reading="", caveat="고전번역원 분류를 그대로 쓴다(부·사는 詩類 안의 중분류). 편 단위가 「十首」 묶음인 경우, 다른 갈래와 함께 실린 문집에서는 편 기준 비중이 낮아지고 글자 기준은 그렇지 않다."),
          en=dict(name="Share of poetry", definition="Share of the author's own works classified as poetry (詩類), by works and by characters. The site's headline metric.",
-                 formula="Poetry works / own works (per century); poetry characters / own characters", reading="", caveat="Uses the ITKC classification as given (rhapsodies and lyrics are subclasses of 詩類). Where a cycle of ten poems is one work, the work-based share falls and the character-based share does not."),
+                 formula="Poetry works / own works (per century); poetry characters / own characters", reading="", caveat="Uses the ITKC classification as given (rhapsodies and lyrics are subclasses of 詩類). Where a cycle of ten poems is one work, the work-based share falls in collections that also hold other classes, and the character-based share does not."),
          external=dict(ko="곽지은(2026)의 문체 비중 추이와 방향을 대조한다 — 詩 최다·점진 하락·20세기 반등.", en="Direction compared with Kwak (2026): poetry largest, gradual decline, 20th-century rebound.")),
     dict(id="b2_genre_mix", series="B", table="b_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="7대분류 구성", definition="세기별로 저자 글이 7개 대분류(詩·書簡·序跋·傳記·公車·哀祭·雜著)에 어떻게 나뉘는가.",
@@ -165,9 +165,9 @@ METRICS = [
                  formula="제목에서 墓誌銘·墓碣銘·神道碑·墓表·行狀·諡狀 등 앞부분을 피장자로 본다(贈·故·先考 등 머리말 제거).", reading="", caveat="관직·시호가 붙은 긴 문자열이라 고유 수는 거의 편 수와 같다. 1.0 은 동일인 묶기를 하지 않는다."),
          en=dict(name="Subjects of epitaphs and biographies", definition="Subject strings parsed from the titles of the author's epitaphs, tomb inscriptions and biographies, with the number of distinct strings.",
                  formula="Text before 墓誌銘·墓碣銘·神道碑·墓表·行狀·諡狀 etc. is the subject (honorific prefixes 贈·故·先考 removed).", reading="", caveat="Strings carry offices and posthumous names, so distinct counts are close to work counts. Version 1.0 does not merge persons.")),
-    dict(id="c3_other_writers", series="C", table="c_writers", unit="persons", fmt=",.0f", reliability="exact",
-         ko=dict(name="타인 필자 수", definition="문집에 글을 보탠 저자 이외의 필자 수(서문·발문·행장·만사·부록)와 그 편 수.", formula="필자 ≠ 저자인 편의 고유 필자 한자성명 수", reading="", caveat="필자 태그 기준이다. 「門人」처럼 이름 아닌 표기는 한 사람으로 센다."),
-         en=dict(name="Other writers", definition="Writers other than the author who contributed to the collection (prefaces, postscripts, biographies, elegies, appendices) and their works.", formula="Distinct writer names among works whose writer ≠ author", reading="", caveat="Follows the writer tag; a label such as '門人' (disciples) counts as one.")),
+    dict(id="c3_other_writers", series="C", table="c_writers", unit="strings", fmt=",.0f", reliability="exact",
+         ko=dict(name="타인 필자 표지 수", definition="문집에 실린 편 가운데 저자 글로 분류되지 않은 편(서문·발문·행장·만사·부록 등, 필자 표지가 빈 편 포함)의 수와, 그 편들에 나오는 서로 다른 필자 표지(자료에 적힌 필자 표지 문자열 그대로)의 수.", formula="저자 글로 분류되지 않은 편(필자 표지가 빈 편 포함)의 비어 있지 않은 필자 표지 가운데 서로 다른 문자열의 수", reading="", caveat="필자 태그의 문자열을 센다 — 사람 수가 아니다. 「門人」처럼 이름 아닌 표기도 문자열 하나로 세고, 필자 태그가 빈 편은 편 수에만 든다."),
+         en=dict(name="Other-writer tags", definition="The number of works in a collection not classed as the author's own (prefaces, postscripts, biographies, elegies, appendices and the like), and the number of distinct writer tags (writer-tag strings as recorded) among them.", formula="Distinct non-empty writer-tag strings among the works not classed as the author's own (works with an empty tag included in the works)", reading="", caveat="Counts writer-tag strings, not people; a label such as '門人' (disciples) counts as one string, and works with an empty tag count in the works only.")),
     # ---------------- D authors
     dict(id="d1_dates", series="D", table="d_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="생몰 완비율과 수명", definition="저자 가운데 생년·몰년이 모두 있는 비율과, 있는 저자의 수명 중앙값, 세기별.", formula="생년·몰년 있는 저자 / 저자; median(몰년 − 생년)", reading="", caveat="고전번역원 서지의 서기년을 그대로 쓴다. 한국역대인명정보와 맞춰 본 일치율을 신뢰도 카드에 적는다."),
@@ -175,14 +175,14 @@ METRICS = [
          external=dict(ko="한국역대인명정보의 생몰년과 대조.", en="Compared with the dates in the AKS person database.")),
     dict(id="d2_munkwa", series="D", table="d_centuries", unit="share", fmt=".1%", reliability="sampled-precision",
          ko=dict(name="문과 급제 연결률과 급제 연령", definition="저자 가운데 문과방목의 급제자와 연결된 비율, 연결된 저자의 급제 연령(세는나이) 분포.",
-                 formula="성명은 NFKC 정규화(煕=熙 포함). M1 성명+생년 일치(같은 본관의 여러 행은 첫 급제 = M1-first) / M2 성명 일치·방목 생년 없음·자 또는 호 일치 / M3 성명 일치·후보 1·방목 생년 없음·시험년이 [생년+15, 몰년(없으면 생년+70)] 안. 둘 이상 남으면 미확정. 연결률 = (M1+M1-first+M2+M3) / 저자.",
+                 formula="성명은 NFKC 정규화(煕=熙 포함). 아래 순서로 적용해 앞 규칙에 걸리면 뒤 규칙은 보지 않는다. M1 성명+생년 일치(생년이 같은 후보가 여럿이어도 본관이 모두 같으면 한 사람의 여러 급제로 보고 첫 급제 = M1-first, 본관이 다르면 미확정이고 M2·M3 으로 넘어가지 않는다) / M2 성명 일치·방목 생년 없음·자 또는 호 일치(일치 후보가 둘 이상이면 미확정으로 끝낸다) / M3 저자 생년이 있을 때만: 성명 일치 후보가 하나뿐이고 그 후보의 방목 생년이 없으며 시험년이 [생년+15, 몰년(없으면 생년+70)] 안(성명 일치 후보가 여럿이고 그 가운데 시험년이 이 범위에 드는 후보가 둘 이상이면 미확정). 미확정은 연결로 세지 않는다. 연결률 = (M1+M1-first+M2+M3) / 저자.",
                  reading="", caveat="연결률은 급제율이 아니다 — 급제하지 않은 저자(산림·승려·여성·고려인)는 정상적으로 연결되지 않는다. 간략해제는 급제를 거의 적지 않아 정밀도를 해제로 잴 수 없었고, 자·호 교차 일치율로 대신한다(신뢰도 카드)."),
          en=dict(name="Examination linkage and age at passing", definition="Share of authors linked to a passer in the civil-examination roster, and the distribution of the age at passing (East Asian reckoning) for linked authors.",
-                 formula="Names NFKC-normalized (煕=熙 included). M1 same name and birth year (several rows of one clan seat: first pass = M1-first) / M2 same name, roster birth absent, courtesy or pen name identical / M3 same name, single candidate, roster birth absent, exam year within [birth+15, death (or birth+70)]. More than one survivor: unresolved. Linkage = (M1+M1-first+M2+M3) / authors.",
+                 formula="Names NFKC-normalized (煕=熙 included). The rules apply in this order; once one applies, the later ones are not tried. M1 same name and birth year (several such candidates of one clan seat are one person with several passes: first pass = M1-first; of different clan seats: unresolved, and M2 and M3 are not tried) / M2 same name, roster birth absent, courtesy or pen name identical (more than one such candidate: unresolved, and M3 is not tried) / M3 only when the author's birth year is known: a single same-name candidate, with no roster birth year, whose exam year is within [birth+15, death (or birth+70)] (if there are several same-name candidates and more than one falls in that window: unresolved). Unresolved cases are not counted as linked. Linkage = (M1+M1-first+M2+M3) / authors.",
                  reading="", caveat="Linkage is not a pass rate: authors who never passed the examination (rural scholars, monks, women, Goryeo authors) rightly stay unlinked. The short introductions rarely mention examinations, so precision could not be measured against them; a courtesy- and pen-name cross-check stands in (reliability card).")),
     dict(id="d3_pub_lag", series="D", table="d_centuries", unit="years", fmt=",.0f", reliability="exact",
-         ko=dict(name="간행 시차", definition="원문 간행년에서 저자 몰년을 뺀 햇수의 중앙값과 사분위, 세기별.", formula="median(원문간행년 − 몰년), 간행년이 있는 문집만", reading="", caveat="서지의 원문간행년은 총간 저본의 간행년이다(초간이 아닐 수 있다). 간행년 없는 문집은 뺀다."),
-         en=dict(name="Publication lag", definition="Median and quartiles of years from the author's death to the printing of the source edition, by century.", formula="median(publication year − death year), collections with a publication year only", reading="", caveat="The bibliographic year is that of the edition reproduced in the series, not necessarily the first printing; collections without a year are excluded."),
+         ko=dict(name="간행 시차", definition="원문 간행년에서 저자 몰년을 뺀 햇수의 중앙값과 사분위, 세기별.", formula="median(원문간행년 − 몰년), 간행년과 몰년이 모두 있는 문집만", reading="", caveat="서지의 원문간행년은 총간 저본의 간행년이다(초간이 아닐 수 있다). 간행년이나 몰년이 없는 문집은 뺀다."),
+         en=dict(name="Publication lag", definition="Median and quartiles of years from the author's death to the printing of the source edition, by century.", formula="median(publication year − death year), collections with both a publication year and a death year only", reading="", caveat="The bibliographic year is that of the edition reproduced in the series, not necessarily the first printing; collections without a publication year or a death year are excluded."),
          external=dict(ko="곽지은(2026)의 「약 1세기 시차」와 나란히.", en="Set against Kwak (2026): 'about a century'.")),
     dict(id="d4_translation", series="D", table="d_centuries", unit="share", fmt=".1%", reliability="exact",
          ko=dict(name="번역문 연계 진도", definition="편 가운데 고전종합DB 안에서 번역문이 연계된 편의 비율, 그리고 연계된 편이 하나도 없는 문집의 수. 번역 사업의 현황이 아니라 DB 연계의 현황이다.", formula="연계항목 type=\"번역문\" 있는 편 / 편; 문집 단위 0건 수", reading="", caveat="2024-08 자 XML 의 태그 기준이다. 연계가 하나도 없는 정편 문집 520종은 최채기(2020)가 센 미번역 291종보다 훨씬 많다 — 번역서가 있어도 DB 에 연계되지 않은 문집이 있다는 뜻이므로, 이 수치를 「미번역」으로 읽지 않는다."),
